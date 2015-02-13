@@ -1,5 +1,7 @@
 #~~~~~~~GLOBAL IMPORTS~~~~~~~#
 
+import numpy as np
+import HTSeq
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
 class QualityFilter(object):
@@ -11,77 +13,77 @@ class QualityFilter(object):
 
     #~~~~~~~FONDAMENTAL METHODS~~~~~~~#
 
-    def __init__(self, min_qual):
+    def __init__(self, qual_cutdown, win_size, left_trim, right_trim, min_size):
         """
         Simple storage of object variables and counters init
         """
         # Init object variables
-        self.min_qual = min_qual
-
+        self.qual_cutdown = qual_cutdown
+        self.win_size = win_size
+        self.left_trim = left_trim
+        self.right_trim = right_trim
+        self.min_size = min_size
+        
         # Counters
         self.total = 0
         self.qual_pass = 0
         self.qual_fail = 0
-        self.mean_qual = []
-        self.run = False
+        self.cumulative_sum = 0
 
+    @property
+    def mean_qual(self):
+        return self.cumulative_sum / self.total
+    
     def __repr__(self):
-        msg = "QUALITY FILTER\n"
-        msg += "\tQuality Threshold : {}\n".format(self.min_qual)
-        if self.run:
-            msg += "\tTotal sequences : {}\n".format(self.total)
-            msg += "\tFail quality filter : {}\n".format(self.qual_fail)
-            msg += "\tPass quality filter : {}\n".format(self.qual_pass)
-            msg += "\tMean quality : {}\n".format(sum(self.mean_qual)/float(len(self.mean_qual)))
-            msg += "\tMinimal quality : {}\n".format(min(self.mean_qual))
-            msg += "\tMaximal quality : {}\n".format(max(self.mean_qual))
-        return msg
+        msg = "Quality filer CLASS\n\tParameters list\n"
+        # list all values in object dict in alphabetical order
+        keylist = [key for key in self.__dict__.keys()]
+        keylist.sort()
+        for key in keylist:
+            msg+="\t{}\t{}\n".format(key, self.__dict__[key])
+        return (msg)
 
     def __str__(self):
         return "<Instance of {} from {} >\n".format(self.__class__.__name__, self.__module__)
 
-    def get(self, key):
-        return self.__dict__[key]
-
-    def set(self, key, value):
-        self.__dict__[key] = value
-
     #~~~~~~~PUBLIC METHODS~~~~~~~#
 
-    def filter(self, record):
+    def __call__(self, seq):
         """
         Compute mean quality score and compare to the minimal quality required
+        seq is and HTSeq.SequenceWithQualities object
         """
-        self.run = True
-        # Compute the mean quality
-        mean = sum(record.letter_annotations['phred_quality'])/len(record)
-        # Add the value to the mean list
-        self.mean_qual.append(mean)
+        
         self.total += 1
-        # Return the record if its quality is high enough
-        if mean >= self.min_qual:
-            self.qual_pass += 1
-            return record
-        else:
+        self.cumulative_sum += seq.qual.mean()
+        
+        if self.left_trim:
+            seq = self._left_trim(seq)
+        
+        if self.right_trim
+            seq = self._right_trim(seq)
+        
+        # Return the record if its quality is high enough after trimming
+        if len(seq) < self.min_size:
+            return None
             self.qual_fail += 1
-            return None
-
-    #~~~~~~~ GETTERS ~~~~~~~#
-
-    def get_mean_qual (self):
-        if len(self.mean_qual) > 0 :
-            return sum(self.mean_qual)/float(len(self.mean_qual))
+            
         else:
-            return None
+            self.qual_pass += 1
+            return seq
 
-    def get_min_qual (self):
-        if len(self.mean_qual) > 0 :
-            return min(self.mean_qual)
-        else:
-            return None
+    def _right_trim (self, seq):
+        
+        for i in np.arange(a.size, 0, -1):
+            print (i)
+            if a[i:i+3].mean() < 20:
+                print "STOP"
+                break
+        
+        
+        
 
-    def get_max_qual (self):
-        if len(self.mean_qual) > 0 :
-            return max(self.mean_qual)
-        else:
-            return None
+    def _left_trim (self, seq):
+        
+        
+
