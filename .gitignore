@@ -52,3 +52,9 @@ docs/_build/
 
 # PyBuilder
 target/
+
+# Specific target
+scr/AdapterTrimmer.c
+scr/AdapterTrimmer.o
+scr/AdapterTrimmer.so
+scr/AdapterTrimmer.html

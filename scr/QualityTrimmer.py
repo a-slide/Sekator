@@ -1,7 +1,8 @@
-#~~~~~~~GLOBAL IMPORTS~~~~~~~#
+#~~~~~~~IMPORTS~~~~~~~#
 
+# Third party imports
 import numpy as np
-import HTSeq
+from HTSeq import SequenceWithQualities as HTSfastq
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
 class QualityTrimmer(object):
@@ -114,7 +115,10 @@ class QualityTrimmer(object):
             self.base_trimmed += (start + seq.qual.size - end)
 
             ## Create a new object instead of slicing
-            return HTSeq.SequenceWithQualities( seq=seq.seq[start:end], name=seq.name, qualstr=seq.qualstr[start:end])
+            return HTSfastq(
+                seq=seq.seq[start:end],
+                name=seq.name,
+                qualstr=seq.qualstr[start:end])
 
         else:
             self.qual_fail += 1

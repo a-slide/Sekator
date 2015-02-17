@@ -3,7 +3,7 @@
 @brief      Simplified Fast C implementation of Smith Waterman based on SSW Library
 * An SIMD Smith-Waterman C/C++ Library for Use in Genomic Applications
 * from Mengyao Zhao & Wan-Ping Lee available
-* Available at https://github.com/a-slide/Complete-Striped-Smith-Waterman-Library
+* Available at https://github.com/mengyao/Complete-Striped-Smith-Waterman-Library
 
 @copyright  The MIT licence
 * The MIT License
@@ -90,16 +90,17 @@ struct _align{
 };
 typedef struct _align s_align;
 
-/* This table is used to transform nucleotide letters into numbers. */
+/* This table is used to transform nucleotide letters into numbers.
+ * A=a=0, C=c=1, G=g=2, T==t3, all other char = 4*/
 static const int8_t NT_TABLE[128] = {
-    4, 4, 4, 4,  4, 4, 4, 4,  4, 4, 4, 4,  4, 4, 4, 4,
-    4, 4, 4, 4,  4, 4, 4, 4,  4, 4, 4, 4,  4, 4, 4, 4,
-    4, 4, 4, 4,  4, 4, 4, 4,  4, 4, 4, 4,  4, 4, 4, 4,
-    4, 4, 4, 4,  4, 4, 4, 4,  4, 4, 4, 4,  4, 4, 4, 4,
-    4, 0, 4, 1,  4, 4, 4, 2,  4, 4, 4, 4,  4, 4, 4, 4,
-    4, 4, 4, 4,  3, 4, 4, 4,  4, 4, 4, 4,  4, 4, 4, 4,
-    4, 0, 4, 1,  4, 4, 4, 2,  4, 4, 4, 4,  4, 4, 4, 4,
-    4, 4, 4, 4,  3, 4, 4, 4,  4, 4, 4, 4,  4, 4, 4, 4
+    4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4,
+    4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4,
+    4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4,
+    4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4,
+    4, 0, 4, 1, 4, 4, 4, 2, 4, 4, 4, 4, 4, 4, 4, 4,
+    4, 4, 4, 4, 3, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4,
+    4, 0, 4, 1, 4, 4, 4, 2, 4, 4, 4, 4, 4, 4, 4, 4,
+    4, 4, 4, 4, 3, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4
 };
 
 //#################################################################################################
@@ -152,7 +153,7 @@ int8_t* score_matrix (
     return mat;
 }
 
-int8_t* DNA_seq_to_int(char * DNA_seq, int seq_len)
+int8_t* DNA_seq_to_int(char * DNA_seq, const int32_t seq_len)
 {
     int32_t i;
     int8_t* mat;
