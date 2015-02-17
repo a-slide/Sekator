@@ -43,7 +43,7 @@ class QualityTrimmer(object):
         return self.cumulative_sum / self.total
 
     def __repr__(self):
-        msg = "Quality filer CLASS\n\tParameters list\n"
+        msg = "QUALITY TRIMMER CLASS\n"
         # list all values in object dict in alphabetical order
         keylist = [key for key in self.__dict__.keys()]
         keylist.sort()

@@ -117,7 +117,7 @@ int main(void)
     print_int8_t (query,5);
     ref = DNA_seq_to_int("AATCGTCAGATCNNAGTCTGC", 20);
     print_int8_t (ref,20);
-    score = score_matrix (2, -2, 0);
+    score = score_matrix (2, 2, 0);
     print_int8_t (score,25);
 
     res = ssw_align (query, 5, ref, 20, score, 3, 1);
@@ -136,15 +136,15 @@ int main(void)
 
 int8_t* score_matrix (
     const int8_t match, // Bonus for a match (POSITIVE)
-    const int8_t mismatch, // Malus for a mismatch (NEGATIVE)
-    const int8_t ambiguous) // Bonus of malus for an ambiguous position (NEGATIVE OR POSITIVE)
+    const int8_t mismatch, // Malus for a mismatch (POSITIVE)
+    const int8_t ambiguous) // Bonus of malus for an ambiguous position (POSITIVE)
 {
     int32_t i, j, k;
     int8_t* mat;
     mat = malloc_int8_t(25);
 
     for (i = k = 0; i < 4; ++i) {
-        for (j = 0; j < 4; ++j) mat[k++] = i == j ? match : mismatch;
+        for (j = 0; j < 4; ++j) mat[k++] = i == j ? match : - mismatch;
         mat[k++] = ambiguous;
     }
     for (i = 0; i < 5; ++i) mat[k++] = ambiguous;
@@ -168,8 +168,8 @@ s_align ssw_align (const int8_t* query, // Query sequence encoded by integers
                     const int8_t* ref, // Reference sequence encoded by integers
                     int32_t refLen, // Length of the reference sequence
                     const int8_t* mat, // Score matrix produced by score_matrix()
-                    const int8_t gapO, // Weight of gap open (NEGATIVE)
-                    const int8_t gapE) // Weight of gap extend (NEGATIVE)
+                    const int8_t gapO, // Weight of gap open (POSITIVE)
+                    const int8_t gapE) // Weight of gap extend (POSITIVE)
 {
     s_alignment_end best;
     s_alignment_end best_reverse;
@@ -180,7 +180,7 @@ s_align ssw_align (const int8_t* query, // Query sequence encoded by integers
 
     // Find the alignment scores and ending positions
     vProfile_for = qP_word(query, mat, queryLen);
-    best = sw_sse2_word(ref, 0, refLen, queryLen, -gapO, -gapE, vProfile_for, -1);
+    best = sw_sse2_word(ref, 0, refLen, queryLen, gapO, gapE, vProfile_for, -1);
     free(vProfile_for);
     res.score = best.score;
     res.ref_end = best.ref;
@@ -189,7 +189,7 @@ s_align ssw_align (const int8_t* query, // Query sequence encoded by integers
     // Find the beginning position of the best alignment.
     query_reverse = seq_reverse(query, res.query_end);
     vProfile_rev = qP_word(query_reverse, mat, res.query_end+1);
-    best_reverse = sw_sse2_word(ref, 1, res.ref_end+1, res.query_end+1, -gapO, -gapE, vProfile_rev, res.score);
+    best_reverse = sw_sse2_word(ref, 1, res.ref_end+1, res.query_end+1, gapO, gapE, vProfile_rev, res.score);
     free(vProfile_rev);
     free(query_reverse);
     res.ref_begin = best_reverse.ref;

@@ -1,3 +1,37 @@
+"""
+@package ssw_wrap
+@brief Simple python wrapper for SSW align library
+To use the dynamic library libssw.so you may need to modify the LD_LIBRARY_PATH environment
+variable to include the library directory (export LD_LIBRARY_PATH=$PWD) or for definitive
+inclusion of the lib edit /etc/ld.so.conf and add the path or the directory containing the
+library and update the cache by using /sbin/ldconfig as root
+@copyright  [The MIT licence](http://opensource.org/licenses/MIT)
+@author     Clement & Adrien Leger - 2014
+"""
+
+#~~~~~~~GLOBAL IMPORTS~~~~~~~#
+# Standard library packages
+from ctypes import *
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
+class CAlignRes(Structure):
+    """
+    @class  SSWAlignRes
+    @brief  ctypes Structure with s_align struct mapping returned by SSWAligner.Align func
+            Correspond to the structure of the query profile
+    """
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
+
+    #~~~~~~~Ctype Structure~~~~~~~#
+    _fields_ = [('score', c_uint16),
+                ('score2', c_uint16),
+                ('ref_begin', c_int32),
+                ('ref_end', c_int32),
+                ('query_begin', c_int32),
+                ('query_end', c_int32),
+                ('ref_end2', c_int32),
+                ('cigar', POINTER(c_uint32)),
+                ('cigarLen', c_int32)]
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
 class Aligner(object):
@@ -13,7 +47,54 @@ class Aligner(object):
     base_to_int = { 'A':0, 'C':1, 'G':2, 'T':3, 'N':4, 'a':0, 'c':1, 'g':2, 't':3, 'n':4}
     int_to_base = { 0:'A', 1:'C', 2:'G', 3:'T', 4:'N'}
 
+    # Load the ssw library using ctypes
+    libssw = cdll.LoadLibrary('libssw.so')
+
+    # Init and setup the functions pointer to map the one specified in the SSW lib
+    # ssw_init method
+    ssw_init = libssw.ssw_init
+    ssw_init.restype = c_void_p
+    ssw_init.argtypes = [POINTER(c_int8), c_int32, POINTER(c_int8), c_int32, c_int8]
+    # init_destroy function
+    init_destroy = libssw.init_destroy
+    init_destroy.restype = None
+    init_destroy.argtypes =  [c_void_p]
+    # ssw_align function
+    ssw_align = libssw.ssw_align
+    ssw_align.restype = POINTER(CAlignRes)
+    ssw_align.argtypes = [c_void_p, POINTER(c_int8), c_int32, c_uint8, c_uint8, c_uint8, c_uint16, c_int32, c_int32]
+    # align_destroy function
+    align_destroy = libssw.align_destroy
+    align_destroy.restype = None
+    align_destroy.argtypes = [POINTER(CAlignRes)]
+
     #~~~~~~~FONDAMENTAL METHODS~~~~~~~#
+
+    def __repr__(self):
+        msg = "SSW WRAPPER\n"
+        msg += "SCORE PARAMETERS:\n"
+        msg += " Gap Weight     Open: {}     Extension: {}\n".format(-self.gap_open, -self.gap_extend)
+        msg += " Align Weight   Match: {}    Mismatch: {}\n\n".format(self.match, -self.mismatch)
+        msg += " Match/mismatch Score matrix\n"
+        msg += " \tA\tC\tG\tT\tN\n"
+        msg += " A\t{}\t{}\t{}\t{}\t{}\n".format(self.match, -self.mismatch, -self.mismatch, -self.mismatch, 0)
+        msg += " C\t{}\t{}\t{}\t{}\t{}\n".format(-self.mismatch, self.match, -self.mismatch, -self.mismatch, 0)
+        msg += " G\t{}\t{}\t{}\t{}\t{}\n".format(-self.mismatch, -self.mismatch, self.match, -self.mismatch, 0)
+        msg += " T\t{}\t{}\t{}\t{}\t{}\n".format(-self.mismatch, -self.mismatch, -self.mismatch, self.match, 0)
+        msg += " N\t{}\t{}\t{}\t{}\t{}\n\n".format(0,0,0,0,0)
+        msg += "RESULT PARAMETERS:\n"
+        msg += " Report cigar           {}\n".format(self.report_cigar)
+        msg += " Report secondary match {}\n\n".format(self.report_secondary)
+        #msg += "REFERENCE SEQUENCE :\n"
+        #if self.ref_len <= 50:
+            #msg += "".join([self.int_to_base[i] for i in self.ref_seq])+"\n"
+        #else:
+            #msg += "".join([self.int_to_base[self.ref_seq[i]] for i in range(50)])+"...\n"
+        #msg += " Lenght :{} nucleotides\n".format(self.ref_len)
+        return msg
+
+    def __str__(self):
+        return "\n<Instance of {} from {} >\n".format(self.__class__.__name__, self.__module__)
 
     def __init__(self,
                 ref_seq="",
@@ -41,38 +122,13 @@ class Aligner(object):
         self.report_cigar = report_cigar
 
         # Set gap penalties
-        self.match = match
-        self.mismatch = mismatch
-        self.ambiguous = ambiguous
-        self.gap_open = gap_open
-        self.gap_extend = gap_extend
+        self.set_gap(gap_open, gap_extend)
 
         # Set the cost matrix
-        self.score_matrix = score_matrix()
+        self.set_mat(match, mismatch)
 
         # Set the reference sequence
         self.set_ref(ref_seq)
-
-    def __repr__(self):
-        msg = "SSW WRAPPER\n"
-        msg += "SCORE PARAMETERS:\n"
-        msg += " Gap Weight     Open: {}     Extension: {}\n".format(-self.gap_open, -self.gap_extend)
-        msg += " Align Weight   Match: {}    Mismatch: {}\n\n".format(self.match, -self.mismatch)
-        msg += " Match/mismatch Score matrix\n"
-        msg += " \tA\tC\tG\tT\tN\n"
-        msg += " A\t{}\t{}\t{}\t{}\t{}\n".format(self.match, -self.mismatch, -self.mismatch, -self.mismatch, 0)
-        msg += " C\t{}\t{}\t{}\t{}\t{}\n".format(-self.mismatch, self.match, -self.mismatch, -self.mismatch, 0)
-        msg += " G\t{}\t{}\t{}\t{}\t{}\n".format(-self.mismatch, -self.mismatch, self.match, -self.mismatch, 0)
-        msg += " T\t{}\t{}\t{}\t{}\t{}\n".format(-self.mismatch, -self.mismatch, -self.mismatch, self.match, 0)
-        msg += " N\t{}\t{}\t{}\t{}\t{}\n\n".format(0,0,0,0,0)
-        msg += "RESULT PARAMETERS:\n"
-        msg += " Report cigar           {}\n".format(self.report_cigar)
-        msg += " Report secondary match {}\n\n".format(self.report_secondary)
-        return msg
-
-    def __str__(self):
-        return "\n<Instance of {} from {} >\n".format(self.__class__.__name__, self.__module__)
-
 
     #~~~~~~~SETTERS METHODS~~~~~~~#
 
@@ -80,7 +136,8 @@ class Aligner(object):
         """
         Store gapopen and gap extension penalties
         """
-
+        self.gap_open = gap_open
+        self.gap_extend = gap_extend
 
 
     def set_mat(self, match=2, mismatch=2):

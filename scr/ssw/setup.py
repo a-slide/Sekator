@@ -4,7 +4,7 @@ from Cython.Build import cythonize
 from Cython.Distutils import build_ext
 
 extensions = [
-    Extension("pyssw", ["pyssw.pyx"])
+    Extension("AdapterTrimmer", ["AdapterTrimmer.pyx"])
 ]
 
 setup(
