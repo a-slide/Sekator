@@ -40,17 +40,19 @@ cdef class AdapterTrimmer:
     #~~~~~~~SELF VARIABLES DEFINITION~~~~~~~#
 
     cdef:
-        int32_t min_size, n_query
+        uint32_t min_size, n_query, n_total, n_untrimmed, n_trimmed, n_fail
+        uint64_t n_base_trimmed
         int8_t ssw_match, ssw_mismatch, ssw_ambiguous, ssw_gapO, ssw_gapE
         int8_t* score_mat
         s_query* ql
+        
 
     #~~~~~~~FONDAMENTAL METHODS~~~~~~~#
 
-    def __init__(self, list adapter_list, bint find_reverse=True, int32_t min_size=0,\
-        float min_match_len=0.8, float min_match_score=1.4, int8_t ssw_match=2,\
+    def __init__(self, list adapter_list, bint find_reverse=False, int32_t min_size=30,\
+        float min_match_len=0.3, float min_match_score=1, int8_t ssw_match=2,\
         int8_t ssw_mismatch=2, int8_t ssw_ambiguous=0, int8_t ssw_gapO=3, int8_t ssw_gapE=1):
-
+        
 #        Initialize AdapterTrimmer from a list of adapter sequence and compute the score matrix
 #        based on the provided ssw scores.
 #        @param adapter_list    List of adapter sequence to match on all read to be analysed
@@ -63,6 +65,7 @@ cdef class AdapterTrimmer:
 #        @param ssw_ambiguous   Value in case of ambiguous base (Should remain NULL)
 #        @param ssw_gapO        Penalty in case of gap opening (POSITIVE)
 #        @param ssw_gapE        Penalty in case of gap extension (POSITIVE)
+#        @note Default values determined for 100pb reads with randomly generated 60 pb adaptors
 
         # Store self value for future usage
         self.min_size = min_size
@@ -71,6 +74,13 @@ cdef class AdapterTrimmer:
         self.ssw_ambiguous = ssw_ambiguous
         self.ssw_gapO = ssw_gapO
         self.ssw_gapE = ssw_gapE
+        
+        # Init Counters
+        self.n_total = 0
+        self.n_untrimmed = 0
+        self.n_trimmed = 0
+        self.n_fail = 0
+        self.n_base_trimmed = 0
 
         # Init a score matrix
         self.score_mat = score_matrix (ssw_match, ssw_mismatch, ssw_ambiguous)
@@ -87,24 +97,17 @@ cdef class AdapterTrimmer:
 
     def __repr__(self):
         msg = "ADAPTER TRIMMER CLASS\n"
-        msg += "Minimal size : {}\n".format(self.min_size)
+        msg += "Minimal size:{} Total:{} Untrimmed:{} Trimmed:{} Fail:{} Base Trimmed:{}\n".format(
+            self.min_size, self.n_total, self.n_untrimmed, self.n_trimmed, self.n_fail, self.n_base_trimmed)
         msg += "Number of adater (+rc) : {}\n".format(self.n_query)
         msg += "List of adapter\n"
         for i in range(self.n_query):
-            msg += "\tID:{}  Size:{}  Found:{}  Min len:{}  Min score:{}\n".format(
-                self.ql[i].id,
-                self.ql[i].size,
-                self.ql[i].count,
-                self.ql[i].min_len,
-                self.ql[i].min_score)
-            msg += "\t"+str([self.ql[i].seq_int[j] for j in range(self.ql[i].size)])+"\n"
+            msg += "\tID:{} Size:{} Found:{} Min len:{} Min score:{}\n".format(
+                self.ql[i].id, self.ql[i].size, self.ql[i].count, self.ql[i].min_len, self.ql[i].min_score)
+            msg += "\tInteger sequence : {}\n".format("".join([str(self.ql[i].seq_int[j]) for j in range(self.ql[i].size)]))
         msg += "SSW parameters\n"
-        msg += "Match:{}  Mismatch:{}  Ambiguous:{}  Gap Open:{}  Gap extend:{}\n".format(
-            self.ssw_match,
-            self.ssw_mismatch,
-            self.ssw_ambiguous,
-            self.ssw_gapO,
-            self.ssw_gapE)
+        msg += "Match:{} Mismatch:{} Ambiguous:{} Gap Open:{} Gap extend:{}\n".format(
+            self.ssw_match, self.ssw_mismatch, self.ssw_ambiguous, self.ssw_gapO, self.ssw_gapE)
         msg += "Score matrix\n"
         buf = ""
         for i in range(0, 25, 5):
@@ -142,7 +145,9 @@ cdef class AdapterTrimmer:
             s_align res
             int8_t found = 0
             s_query query
-
+        
+        self.n_total += 1
+        
         # Prepare the reference sequence by converting the HTSfastq sequence in int8_t*
         seq_size = len(seq)
         seq_int = DNA_seq_to_int(seq.seq, seq_size)
@@ -182,6 +187,7 @@ cdef class AdapterTrimmer:
 
         # Return an unchanged sequence if no significant match were found
         if not found:
+            self.n_untrimmed += 1
             free(bool_mat) ##
             return seq
 
@@ -197,14 +203,17 @@ cdef class AdapterTrimmer:
                     start_max = start
                     end_max = i
         #print ("start {}  end {}  inter {}".format(start_max, end_max, inter_max))
-
+        
         free(bool_mat) ##
-
+        self.n_base_trimmed += seq_size-inter_max
+        
         # Return None if the size of the longer interval
         if inter_max < self.min_size:
+            self.n_fail += 1
             return None
 
         # Finally in the last case
+        self.n_trimmed += 1
         return HTSfastq(
                 seq=seq.seq[start_max:end_max+1],
                 name=seq.name,

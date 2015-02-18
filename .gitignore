@@ -58,3 +58,4 @@ scr/AdapterTrimmer.c
 scr/AdapterTrimmer.o
 scr/AdapterTrimmer.so
 scr/AdapterTrimmer.html
+src/build/
