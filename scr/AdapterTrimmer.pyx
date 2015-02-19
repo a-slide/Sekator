@@ -34,14 +34,16 @@ ctypedef struct s_query:
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
 cdef class AdapterTrimmer:
+    """
 
+    """
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
 
     #~~~~~~~SELF VARIABLES DEFINITION~~~~~~~#
 
     cdef:
-        uint32_t min_size, n_query, n_total, n_untrimmed, n_trimmed, n_fail
-        uint64_t n_base_trimmed
+        uint32_t min_size, n_query, total, untrimmed, trimmed, fail
+        uint64_t base_trimmed
         int8_t ssw_match, ssw_mismatch, ssw_ambiguous, ssw_gapO, ssw_gapE
         int8_t* score_mat
         s_query* ql
@@ -76,11 +78,11 @@ cdef class AdapterTrimmer:
         self.ssw_gapE = ssw_gapE
         
         # Init Counters
-        self.n_total = 0
-        self.n_untrimmed = 0
-        self.n_trimmed = 0
-        self.n_fail = 0
-        self.n_base_trimmed = 0
+        self.total = 0
+        self.untrimmed = 0
+        self.trimmed = 0
+        self.fail = 0
+        self.base_trimmed = 0
 
         # Init a score matrix
         self.score_mat = score_matrix (ssw_match, ssw_mismatch, ssw_ambiguous)
@@ -98,7 +100,7 @@ cdef class AdapterTrimmer:
     def __repr__(self):
         msg = "ADAPTER TRIMMER CLASS\n"
         msg += "Minimal size:{} Total:{} Untrimmed:{} Trimmed:{} Fail:{} Base Trimmed:{}\n".format(
-            self.min_size, self.n_total, self.n_untrimmed, self.n_trimmed, self.n_fail, self.n_base_trimmed)
+            self.min_size, self.total, self.untrimmed, self.trimmed, self.fail, self.base_trimmed)
         msg += "Number of adater (+rc) : {}\n".format(self.n_query)
         msg += "List of adapter\n"
         for i in range(self.n_query):
@@ -146,7 +148,7 @@ cdef class AdapterTrimmer:
             int8_t found = 0
             s_query query
         
-        self.n_total += 1
+        self.total += 1
         
         # Prepare the reference sequence by converting the HTSfastq sequence in int8_t*
         seq_size = len(seq)
@@ -187,7 +189,7 @@ cdef class AdapterTrimmer:
 
         # Return an unchanged sequence if no significant match were found
         if not found:
-            self.n_untrimmed += 1
+            self.untrimmed += 1
             free(bool_mat) ##
             return seq
 
@@ -205,20 +207,39 @@ cdef class AdapterTrimmer:
         #print ("start {}  end {}  inter {}".format(start_max, end_max, inter_max))
         
         free(bool_mat) ##
-        self.n_base_trimmed += seq_size-inter_max
+        self.base_trimmed += seq_size-inter_max
         
         # Return None if the size of the longer interval
         if inter_max < self.min_size:
-            self.n_fail += 1
+            self.fail += 1
             return None
 
         # Finally in the last case
-        self.n_trimmed += 1
+        self.trimmed += 1
         return HTSfastq(
                 seq=seq.seq[start_max:end_max+1],
                 name=seq.name,
                 qualstr=seq.qualstr[start_max:end_max+1])
-
+    
+    def get_summary (self):
+        
+        cdef:
+            dict summary
+            int32_t i
+            
+        summary = {}
+        summary["total"] = int(self.total)
+        summary["untrimmed"] = int(self.untrimmed)
+        summary["trimmed"] = int(self.trimmed)
+        summary["fail"] = int(self.fail)
+        summary["base_trimmed"] = int(self.base_trimmed)
+        
+        for i in range(self.n_query):
+            summary["adapter"+str(self.ql[i].id)] = int(self.ql[i].count)
+        
+        return summary
+            
+    
     #~~~~~~~PRIVATE METHODS~~~~~~~#
 
     cdef s_query build_query (self, int32_t n, char* seq, float min_match_len, float min_match_score):

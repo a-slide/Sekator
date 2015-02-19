@@ -4,7 +4,9 @@ from Cython.Build import cythonize
 from Cython.Distutils import build_ext
  
 extensions = [
-    Extension("AdapterTrimmer", ["AdapterTrimmer.pyx"]),]
+    Extension("AdapterTrimmer", ["AdapterTrimmer.pyx"]),
+    Extension("QualityTrimmer", ["QualityTrimmer.pyx"]),
+]
  
 setup(
     cmdclass = {'build_ext':build_ext},
