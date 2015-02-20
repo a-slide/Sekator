@@ -15,7 +15,7 @@ class QualityTrimmer(object):
 
     #~~~~~~~FONDAMENTAL METHODS~~~~~~~#
 
-    def __init__(self, qual_cutdown=25, win_size=5, step=1, left_trim=True, right_trim=True, min_size=1):
+    def __init__(self, qual_cutdown=25, win_size=5, step=1, min_size=30, left_trim=True, right_trim=True):
         """
         Init quality trimmer
         @param qual_cutdown Minimal quality in a given windows
@@ -27,10 +27,10 @@ class QualityTrimmer(object):
         # Init object variables
         self.qual_cutdown = qual_cutdown
         self.win_size = win_size
+        self.step = step
+        self.min_size = min_size
         self.left_trim = left_trim
         self.right_trim = right_trim
-        self.min_size = min_size
-        self.step = step
 
         # Counters
         self.total = 0
@@ -46,11 +46,18 @@ class QualityTrimmer(object):
 
     def __repr__(self):
         msg = "QUALITY TRIMMER CLASS\n"
-        # list all values in object dict in alphabetical order
-        keylist = [key for key in self.__dict__.keys()]
-        keylist.sort()
-        for key in keylist:
-            msg+="\t{}\t{}\n".format(key, self.__dict__[key])
+        msg += "\tQuality cutdown : {}\n".format(self.qual_cutdown)
+        msg += "\tSliding windows size : {}\n".format(self.win_size)
+        msg += "\tSliding windows step : {}\n".format(self.step)
+        msg += "\tMinimal size of sequences : {}\n".format(self.min_size)
+        msg += "\tTrim from left : {}\n".format(self.left_trim)
+        msg += "\tTrim from right : {}\n".format(self.right_trim)
+        msg += "\tTotal sequences : {}\n".format(self.total)
+        msg += "\tUntrimmed sequences : {}\n".format(self.untrimmed)
+        msg += "\tTrimmed sequences : {}\n".format(self.trimmed)
+        msg += "\tFailed sequence : {}\n".format(self.fail)
+        msg += "\tNumber of base trimmed : {}\n".format(self.base_trimmed)
+        msg += "\tCumulative sum of quality : {}\n".format(self.qual_mean_sum)
         return (msg)
 
     def __str__(self):
@@ -73,49 +80,45 @@ class QualityTrimmer(object):
 
         # Trimming left end
         if self.left_trim:
+#            print ("Left trim")
 
             # Loop from the begining of seq until the windows quality is high enough
-            for i in np.arange(start=0, stop=seq_size, step=self.step):
+            for i in np.arange(0, seq_size-self.win_size+1, self.step):
 
-                # Extract quality windows
-                win_qual = seq.qual[i:i+self.win_size]
-
-                # If the windows arrive at the end of the sequence return None
-                if win_qual.size < self.win_size:
-                    self.qual_fail += 1
-                    self.base_trimmed += seq_size
-                    return None
-
+                print ("Win : {}  Qual : {}".format(seq.qual[i:i+self.win_size], seq.qual[i:i+self.win_size].mean()))
                 # Mark the start and leave the loop if the quality of the windows is high enough
-                if win_qual.mean() >= self.qual_cutdown:
+                if seq.qual[i:i+self.win_size].mean() >= self.qual_cutdown:
                     start = i
                     break
 
+            # If the windows arrive at the end of the sequence return None
+            self.fail += 1
+            self.base_trimmed += seq_size
+            return None
+
         # Trimming right end
         if self.right_trim:
+#            print ("Right trim")
 
             # Back loop from the end of seq until the windows quality is high enough
-            for i in np.arange(start=seq_size, stop=0, step=-self.step):
+            for i in np.arange(seq_size, 0+self.win_size-1, -self.step):
 
-                # Extract quality windows
-                win_qual = seq.qual[i-self.win_size:i]
-
-                # If the windows arrive at the end of the sequence return None
-                if win_qual.size < self.win_size:
-                    self.qual_fail += 1
-                    self.base_trimmed += seq_size
-                    return None
-
+                print ("Win : {}  Qual : {}".format(seq.qual[i-self.win_size:i], seq.qual[i-self.win_size:i].mean()))
                 # Mark the end and leave the loop if the quality of the windows is high enough
-                if win_qual.mean() >= self.qual_cutdown:
+                if seq.qual[i-self.win_size:i].mean() >= self.qual_cutdown:
                     end = i
                     break
-        
+
+            # If the windows arrive at the beginning of the sequence return None
+            self.fail += 1
+            self.base_trimmed += seq_size
+            return None
+
         # In the case were no trimming was done
         if start == 0 and end == seq_size:
             self.untrimmed += 1
             return seq
-        
+
         # Return the trimmed read if its lenghth is sufficient
         if end-start >= self.min_size:
             self.trimmed += 1
@@ -128,12 +131,12 @@ class QualityTrimmer(object):
                 qualstr=seq.qualstr[start:end])
 
         else:
-            self.qual_fail += 1
+            self.fail += 1
             self.base_trimmed += seq_size
             return None
 
     def get_summary (self):
-            
+
         summary = {}
         summary["total"] = int(self.total)
         summary["untrimmed"] = int(self.untrimmed)
@@ -141,5 +144,5 @@ class QualityTrimmer(object):
         summary["fail"] = int(self.fail)
         summary["base_trimmed"] = int(self.base_trimmed)
         summary["qual_mean_sum"] = int(self.qual_mean_sum)
-        
+
         return summary
