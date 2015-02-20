@@ -35,7 +35,8 @@ ctypedef struct s_query:
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
 cdef class AdapterTrimmer:
     """
-
+    Load a list of adapter sequences and align them with reads through a fast C implemention
+    of Smith and Waterman alignment algorithm
     """
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
 
@@ -47,14 +48,14 @@ cdef class AdapterTrimmer:
         int8_t ssw_match, ssw_mismatch, ssw_ambiguous, ssw_gapO, ssw_gapE
         int8_t* score_mat
         s_query* ql
-        
+
 
     #~~~~~~~FONDAMENTAL METHODS~~~~~~~#
 
     def __init__(self, list adapter_list, bint find_reverse=False, int32_t min_size=30,\
         float min_match_len=0.3, float min_match_score=1, int8_t ssw_match=2,\
         int8_t ssw_mismatch=2, int8_t ssw_ambiguous=0, int8_t ssw_gapO=3, int8_t ssw_gapE=1):
-        
+
 #        Initialize AdapterTrimmer from a list of adapter sequence and compute the score matrix
 #        based on the provided ssw scores.
 #        @param adapter_list    List of adapter sequence to match on all read to be analysed
@@ -62,7 +63,7 @@ cdef class AdapterTrimmer:
 #        @param min_size        Minimal size of read after trimming to be considered valid
 #        @param min_match_len   Minimal fraction of adapter len that needs to be aligned on the target
 #        @param min_match_score Minimal score per base for the alignment of adapter and read
-#        @param ssw_match       Bonus in case of match (POSITIVE)
+#        @param ssw_match       Gain in case of match (POSITIVE)
 #        @param ssw_mismatch    Penalty in case of mismatch (POSITIVE)
 #        @param ssw_ambiguous   Value in case of ambiguous base (Should remain NULL)
 #        @param ssw_gapO        Penalty in case of gap opening (POSITIVE)
@@ -76,7 +77,7 @@ cdef class AdapterTrimmer:
         self.ssw_ambiguous = ssw_ambiguous
         self.ssw_gapO = ssw_gapO
         self.ssw_gapE = ssw_gapE
-        
+
         # Init Counters
         self.total = 0
         self.untrimmed = 0
@@ -147,9 +148,9 @@ cdef class AdapterTrimmer:
             s_align res
             int8_t found = 0
             s_query query
-        
+
         self.total += 1
-        
+
         # Prepare the reference sequence by converting the HTSfastq sequence in int8_t*
         seq_size = len(seq)
         seq_int = DNA_seq_to_int(seq.seq, seq_size)
@@ -205,10 +206,10 @@ cdef class AdapterTrimmer:
                     start_max = start
                     end_max = i
         #print ("start {}  end {}  inter {}".format(start_max, end_max, inter_max))
-        
+
         free(bool_mat) ##
         self.base_trimmed += seq_size-inter_max
-        
+
         # Return None if the size of the longer interval
         if inter_max < self.min_size:
             self.fail += 1
@@ -220,26 +221,26 @@ cdef class AdapterTrimmer:
                 seq=seq.seq[start_max:end_max+1],
                 name=seq.name,
                 qualstr=seq.qualstr[start_max:end_max+1])
-    
+
     def get_summary (self):
-        
+
         cdef:
             dict summary
             int32_t i
-            
+
         summary = {}
         summary["total"] = int(self.total)
         summary["untrimmed"] = int(self.untrimmed)
         summary["trimmed"] = int(self.trimmed)
         summary["fail"] = int(self.fail)
         summary["base_trimmed"] = int(self.base_trimmed)
-        
+
         for i in range(self.n_query):
             summary["adapter"+str(self.ql[i].id)] = int(self.ql[i].count)
-        
+
         return summary
-            
-    
+
+
     #~~~~~~~PRIVATE METHODS~~~~~~~#
 
     cdef s_query build_query (self, int32_t n, char* seq, float min_match_len, float min_match_score):

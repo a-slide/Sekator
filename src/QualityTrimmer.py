@@ -20,9 +20,10 @@ class QualityTrimmer(object):
         Init quality trimmer
         @param qual_cutdown Minimal quality in a given windows
         @param win_size Size of the sliding windows
+        @param step Step of sliding window during trimming
+        @param min_size Minimal size of read to be considered as valid
         @param left_trim Triming starting from left extremity of reads
         @param right_trim Triming starting from right extremity of reads
-        @param min_size Minimal size of read to be considered as valid
         """
         # Init object variables
         self.qual_cutdown = qual_cutdown
@@ -75,44 +76,49 @@ class QualityTrimmer(object):
         self.total += 1
         self.qual_mean_sum += seq.qual.mean()
         seq_size = len(seq)
-        start = 0
-        end = seq_size
+        start = 0 # Init in case of trimming by right end only
+        end = seq_size # Init in case of trimming by left end only
+        found_start = found_end = False
 
         # Trimming left end
         if self.left_trim:
 #            print ("Left trim")
 
             # Loop from the begining of seq until the windows quality is high enough
-            for i in np.arange(0, seq_size-self.win_size+1, self.step):
+            for i in range(0, seq_size-self.win_size+1, self.step):
 
-                print ("Win : {}  Qual : {}".format(seq.qual[i:i+self.win_size], seq.qual[i:i+self.win_size].mean()))
+#                print ("Win : {}  Qual : {}".format(seq.qual[i:i+self.win_size], seq.qual[i:i+self.win_size].mean()))
                 # Mark the start and leave the loop if the quality of the windows is high enough
                 if seq.qual[i:i+self.win_size].mean() >= self.qual_cutdown:
                     start = i
+                    found_start = True
                     break
 
-            # If the windows arrive at the end of the sequence return None
-            self.fail += 1
-            self.base_trimmed += seq_size
-            return None
+            # If the windows arrived at the end of the sequence return None
+            if not found_start:
+                self.fail += 1
+                self.base_trimmed += seq_size
+                return None
 
         # Trimming right end
         if self.right_trim:
 #            print ("Right trim")
 
             # Back loop from the end of seq until the windows quality is high enough
-            for i in np.arange(seq_size, 0+self.win_size-1, -self.step):
+            for i in range(seq_size, 0+self.win_size-1, -self.step):
 
-                print ("Win : {}  Qual : {}".format(seq.qual[i-self.win_size:i], seq.qual[i-self.win_size:i].mean()))
+#                print ("Win : {}  Qual : {}".format(seq.qual[i-self.win_size:i], seq.qual[i-self.win_size:i].mean()))
                 # Mark the end and leave the loop if the quality of the windows is high enough
                 if seq.qual[i-self.win_size:i].mean() >= self.qual_cutdown:
                     end = i
+                    found_end = True
                     break
 
             # If the windows arrive at the beginning of the sequence return None
-            self.fail += 1
-            self.base_trimmed += seq_size
-            return None
+            if not found_end:
+                self.fail += 1
+                self.base_trimmed += seq_size
+                return None
 
         # In the case were no trimming was done
         if start == 0 and end == seq_size:
@@ -125,6 +131,7 @@ class QualityTrimmer(object):
             self.base_trimmed += (start + seq_size - end)
 
             ## Create a new object instead of slicing
+#            return ("-"*start+seq.seq[start:end]+"-"*(seq_size - end))
             return HTSfastq(
                 seq=seq.seq[start:end],
                 name=seq.name,
