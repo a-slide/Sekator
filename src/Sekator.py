@@ -32,7 +32,9 @@ try:
     from HTSeq import FastqReader
 
     # Local Package import
-    from pyDNA.Utilities import count_seq ################################################ remove that
+    #from pyDNA.Utilities import count_seq
+    from AdapterTrimmer import AdapterTrimmer
+    from QualityTrimmer import QualityTrimmer
 
 except ImportError as E:
     print (E)
@@ -125,21 +127,23 @@ class Sekator (object):
 
         print ("All configuration file parameters are valid")
 
-        ## Init shared memory counters
-        #self.total = Value('i', 0)
-        #self.pass_qual = Value('i', 0)
-        #self.pass_trim = Value('i', 0)
-        #self.total_pass = Value('i', 0)
-        #if self.quality_trim:
-            #self.min_qual_found = Value('i', 100)
-            #self.max_qual_found = Value('i', 0)
-            #self.weighted_mean = Value('d', 0.0)
-        #if self.adapter_trim:
-            #self.seq_untrimmed = Value('i', 0)
-            #self.seq_trimmed = Value('i', 0)
-            #self.base_trimmed = Value('i', 0)
-            #self.len_pass = Value('i', 0)
-            #self.len_fail = Value('i', 0)
+        """
+        # Init shared memory counters
+        self.total = Value('i', 0)
+        self.pass_qual = Value('i', 0)
+        self.pass_trim = Value('i', 0)
+        self.total_pass = Value('i', 0)
+        if self.quality_trim:
+            self.min_qual_found = Value('i', 100)
+            self.max_qual_found = Value('i', 0)
+            self.weighted_mean = Value('d', 0.0)
+        if self.adapter_trim:
+            self.seq_untrimmed = Value('i', 0)
+            self.seq_trimmed = Value('i', 0)
+            self.base_trimmed = Value('i', 0)
+            self.len_pass = Value('i', 0)
+            self.len_fail = Value('i', 0)
+        """
 
     def __repr__(self):
         msg = "SEKATOR CLASS\n\tParameters list\n"
@@ -157,43 +161,68 @@ class Sekator (object):
     #~~~~~~~PRIVATE METHODS~~~~~~~#
 
     def __call__ (self):
-        print (self.__repr__())
+        """
+        Main function of the script
+        """
+        # Start a timer
+        start_time = time()
 
-        ### Init AdapterTrimmer and Quality Trimmer Object
-        ##self.qual = quality_filter
-        ##self.adapt = adapter_trimmer
-        ### Count lines in fastq file to prepare a counter of progression
-        ##print ("Count the number of fastq sequences")
-        ##self.nseq = count_seq(R1, "fastq")
-        ##print("fastq files contain {} sequences to align".format(self.nseq))
-        ##self.nseq_list = [int(self.nseq*i/100.0) for i in range(5,101,5)] # 5 percent steps
+        for sample in self.sample_list:
 
-        ### Init queues for input file reading and output file writing (limited to 10000 objects)
-        ##self.inq = Queue(maxsize=10000)
-        ##self.outq = Queue(maxsize=10000)
+            if self.quality_filter:
+                qt = QualityTrimmer(
+                    qual_cutdown = self.qual_cutdown,
+                    win_size = self.win_size,
+                    step = self.step,
+                    min_size = self.min_size,
+                    left_trim = self.left_trim,
+                    right_trim = self.right_trim)
 
-        ### Init processes for file reading, distributed filtering and file writing
-        ##self.pin = Process(target=self.reader, args=())
-        ##self.ps = [Process(target=self.filter, args=()) for i in range(self.numprocs)]
-        ##self.pout = Process(target=self.writer, args=())
+            if self.adapter_trim:
+                at = AdapterTrimmer(
+                    adapter_list = sample.adapter_list,
+                    find_reverse = self.find_reverse,
+                    min_size = self.min_size,
+                    min_match_len = self.min_match_len,
+                    min_match_score = self.min_match_score,
+                    ssw_match = self.ssw_match,
+                    ssw_mismatch = self.ssw_mismatch,
+                    ssw_ambiguous = self.ssw_ambiguous,
+                    ssw_gapO = self.ssw_gapO,
+                    ssw_gapE = self.ssw_gapE)
 
-        ### Start processes
-        ##self.pin.start()
-        ##self.pout.start()
-        ##for p in self.ps:
-            ##p.start()
+        ## Count lines in fastq file to prepare a counter of progression
+        #print ("Count the number of fastq sequences")
+        #self.nseq = count_seq(R1, "fastq")
+        #print("fastq files contain {} sequences to align".format(self.nseq))
+        #self.nseq_list = [int(self.nseq*i/100.0) for i in range(5,101,5)] # 5 percent steps
 
-        ### Blocks until the process is finished
-        ##self.pin.join()
-        ##print ("\tReading done")
-        ##for i in range(len(self.ps)):
-            ##self.ps[i].join()
-        ##print ("\tFiltering done")
-        ##self.pout.join()
-        ##print ("\tWriting done\n")
+        ## Init queues for input file reading and output file writing (limited to 10000 objects)
+        #self.inq = Queue(maxsize=10000)
+        #self.outq = Queue(maxsize=10000)
 
-        ### Stop timer and store the value
-        ##self.exec_time = round(time()-start_time, 3)
+        ## Init processes for file reading, distributed filtering and file writing
+        #self.pin = Process(target=self.reader, args=())
+        #self.ps = [Process(target=self.filter, args=()) for i in range(self.numprocs)]
+        #self.pout = Process(target=self.writer, args=())
+
+        ## Start processes
+        #self.pin.start()
+        #self.pout.start()
+        #for p in self.ps:
+            #p.start()
+
+        ## Blocks until the process is finished
+        #self.pin.join()
+        #print ("\tReading done")
+        #for i in range(len(self.ps)):
+            #self.ps[i].join()
+        #print ("\tFiltering done")
+        #self.pout.join()
+        #print ("\tWriting done\n")
+
+        ## Stop timer and store the value
+        #self.exec_time = round(time()-start_time, 3)
 
     #def reader(self):
         #"""
@@ -400,10 +429,11 @@ class Sample(object):
         self.R1_path = R1_path
         self.R2_path = R2_path
         self.adapter_list = adapter_list
+
         self._test_values()
 
-        self.R1_outname = "{}_R1.fastq{}".format(self.name, ".gz" if compress_output else "")
-        self.R2_outname = "{}_R2.fastq{}".format(self.name, ".gz" if compress_output else "")
+        self.R1_outname = "{}_R1_filtered.fastq{}".format(self.name, ".gz" if compress_output else "")
+        self.R2_outname = "{}_R2_filtered.fastq{}".format(self.name, ".gz" if compress_output else "")
         self.ADD_TO_SAMPLE_NAMES(self.name)
 
     # Fundamental class methods str and repr

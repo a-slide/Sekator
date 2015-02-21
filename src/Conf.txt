@@ -1,13 +1,13 @@
 #########################################################################################
-# 											#
-#  SEKATOR CONFIGURATION FILE 								#
-# 											#
-#########################################################################################  
+#                                                                                       #
+#                             SEKATOR CONFIGURATION FILE                                #
+#                                                                                       #
+#########################################################################################
 
 # Values can by customized with users values, but the file template must remain unchanged, otherwise the program will not be able to load default values.
 # Please follow the following recommendations :
 # - File path should be indicated as absolute path preferably and should not contain blank spaces
-# - Values identified with '**' in the descriptor are not recommended to be modified 
+# - Values identified with '**' in the descriptor are not recommended to be modified
 
 ##########
 [general]
@@ -30,6 +30,8 @@ write_report : True
 
 # Compress the fastq output (BOOLEAN)
 compress_output : True
+
+# Output reads whose mate was discarded after trimming in a separate
 
 ##########
 [quality]
@@ -87,7 +89,7 @@ ssw_gapE : 1
 ###############################
 
 # It is possible to include as many independant sample as required by duplicating a entire sample section and incrementing the id number in the sample section name
-# Each sample section is organize as follow : 
+# Each sample section is organize as follow :
 # name = Unique identifier that will be used to prefix the read files (STRING)
 # R1_path = Valid path to the fastq file (gziped or not) containing the forward reads of the pair (preferably absolute path without spaces) (STRING)
 # R1_path = Valid path to the fastq file (gziped or not) containing the reverse reads of the pair (preferably absolute path without spaces) (STRING)
@@ -104,4 +106,3 @@ name : 10k_AAV
 R1_path : /home/adrien/Bioinformatics/data/fastq/10k_AAV_R1.fastq.gz
 R2_path : /home/adrien/Bioinformatics/data/fastq/10k_AAV_R2.fastq.gz
 adapter_list : GATCGGAAGAGCACACGTCTGAACTCCAGTCACNNNNNNATCTCGTATGCCGTCTTCGCTTG AATGATACGGCGACCACCGAGATCTACACTCTTTCCCTACACGACGCTCTTCCGATCT
-
