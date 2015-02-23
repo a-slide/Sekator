@@ -1,9 +1,3 @@
-#~~~~~~~IMPORTS~~~~~~~#
-
-# Third party imports
-import numpy as np
-from HTSeq import SequenceWithQualities as HTSfastq
-
 #~~~~~~~CIMPORTS~~~~~~~#
 
 # C standard library import
@@ -52,14 +46,13 @@ cdef class AdapterTrimmer:
 
     #~~~~~~~FONDAMENTAL METHODS~~~~~~~#
 
-    def __init__(self, list adapter_list, bint find_reverse=False, int32_t min_size=30,\
+    def __init__(self, list adapter_list, int32_t min_size=30,\
         float min_match_len=0.3, float min_match_score=1, int8_t ssw_match=2,\
         int8_t ssw_mismatch=2, int8_t ssw_ambiguous=0, int8_t ssw_gapO=3, int8_t ssw_gapE=1):
 
 #        Initialize AdapterTrimmer from a list of adapter sequence and compute the score matrix
 #        based on the provided ssw scores.
 #        @param adapter_list    List of adapter sequence to match on all read to be analysed
-#        @param find_reverse    If true will also search for the reverse complementary sequence of the adapter
 #        @param min_size        Minimal size of read after trimming to be considered valid
 #        @param min_match_len   Minimal fraction of adapter len that needs to be aligned on the target
 #        @param min_match_score Minimal score per base for the alignment of adapter and read
@@ -87,10 +80,6 @@ cdef class AdapterTrimmer:
 
         # Init a score matrix
         self.score_mat = score_matrix (ssw_match, ssw_mismatch, ssw_ambiguous)
-
-        # Add rev complement of adapters if needed
-        if find_reverse:
-            adapter_list = adapter_list + [self.rev_comp(adapter) for adapter in adapter_list]
 
         # Init a list of adapters
         self.n_query = len(adapter_list)
@@ -217,10 +206,7 @@ cdef class AdapterTrimmer:
 
         # Finally in the last case
         self.trimmed += 1
-        return HTSfastq(
-                seq=seq.seq[start_max:end_max+1],
-                name=seq.name,
-                qualstr=seq.qualstr[start_max:end_max+1])
+        return seq[start_max:end_max+1]
 
     def get_summary (self):
 
@@ -234,9 +220,10 @@ cdef class AdapterTrimmer:
         summary["trimmed"] = int(self.trimmed)
         summary["fail"] = int(self.fail)
         summary["base_trimmed"] = int(self.base_trimmed)
+        summary["adapter_found"] = []
 
         for i in range(self.n_query):
-            summary["adapter"+str(self.ql[i].id)] = int(self.ql[i].count)
+            summary["adapter_found"].append(int(self.ql[i].count))
 
         return summary
 
@@ -255,8 +242,3 @@ cdef class AdapterTrimmer:
         q.min_score = <int32_t>(min_match_score*q.size) # compute min score and cast in int32_t
 
         return q
-
-    cdef char* rev_comp(self, char* dna):
-#       One liner returning the reverse complement of a DNA sequence
-
-        return "".join([{'A':'T','T':'A','G':'C','C':'G'}.get(base, "N") for base in dna[::-1]])

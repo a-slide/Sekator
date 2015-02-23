@@ -23,7 +23,7 @@ min_size = 0
 auto_thread = True
 
 # If auto_thread is "False" specify the maximal number of thread to use (POSITIVE INTEGER)
-n_thread : 1
+n_thread : 2
 
 # Write a txt report (BOOLEAN)
 write_report : True
@@ -31,7 +31,8 @@ write_report : True
 # Compress the fastq output (BOOLEAN)
 compress_output : True
 
-# Output reads whose mate was discarded after trimming in a separate
+# Output reads whose mate was discarded after trimming in a separate (BOOLEAN)
+output_single : False
 
 ##########
 [quality]
@@ -96,13 +97,8 @@ ssw_gapE : 1
 # adapter_list = list of adapter DNA sequence to be trimmed if adapter_trimming is required. Separate each adapter by a blank space (LIST OF STR)
 
 [sample1]
-name : 100k_AAV
-R1_path : /home/adrien/Bioinformatics/data/fastq/100k_AAV_R1.fastq.gz
-R2_path : /home/adrien/Bioinformatics/data/fastq/100k_AAV_R2.fastq.gz
+name : test
+R1_path : ./testR1.fastq.gz
+R2_path : ./testR1.fastq.gz
 adapter_list : GATCGGAAGAGCACACGTCTGAACTCCAGTCACNNNNNNATCTCGTATGCCGTCTTCTGCTTG AATGATACGGCGACCACCGAGATCTACACTCTTTCCCTACACGACGCTCTTCCGATCT
 
-[sample2]
-name : 10k_AAV
-R1_path : /home/adrien/Bioinformatics/data/fastq/10k_AAV_R1.fastq.gz
-R2_path : /home/adrien/Bioinformatics/data/fastq/10k_AAV_R2.fastq.gz
-adapter_list : GATCGGAAGAGCACACGTCTGAACTCCAGTCACNNNNNNATCTCGTATGCCGTCTTCGCTTG AATGATACGGCGACCACCGAGATCTACACTCTTTCCCTACACGACGCTCTTCCGATCT
