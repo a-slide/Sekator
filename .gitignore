@@ -54,8 +54,10 @@ docs/_build/
 target/
 
 # Specific target
-scr/AdapterTrimmer.c
-scr/AdapterTrimmer.o
-scr/AdapterTrimmer.so
-scr/AdapterTrimmer.html
+src/AdapterTrimmer.c
+src/AdapterTrimmer.o
+src/AdapterTrimmer.so
+src/AdapterTrimmer.html
 src/build/
+test/local_dataset/
+test/test/
