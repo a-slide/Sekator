@@ -49,27 +49,53 @@ class Sekator (object):
     """
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
 
+    #~~~~~~~CLASS FIELDS~~~~~~~#
+
+    VERSION = "Sekator 0.1"
+    USAGE = "Usage: %prog -c Conf.txt [-i -h]"
+
+    #~~~~~~~CLASS METHODS~~~~~~~#
+
+    @classmethod
+    def class_init (self):
+        """
+        init class method for instantiation from command line. Parse arguments parse CL arguments
+        """
+
+        # Define parser usage, options
+        optparser = optparse.OptionParser(usage = self.USAGE, version = self.VERSION)
+        optparser.add_option('-c', dest="conf_file",
+            help= "Path to the configuration file [Mandatory]")
+        optparser.add_option('-i', dest="init_conf", action='store_true',
+            help= "Generate an example configuration file and exit [Facultative]")
+
+        # Parse arguments
+        options, args = optparser.parse_args()
+
+        return Sekator(options.conf_file, options.init_conf)
+
     #~~~~~~~FONDAMENTAL METHODS~~~~~~~#
 
-    def __init__(self, conf_file = None):
+    def __init__(self, conf_file=None, init_conf=None):
         """
         Initialization function, parse options in command line and configuration file and verify
         their values. All self.variables are initialized explicitly in init
-        conf_file arg is mandatory in interactive interpreter and import, else optparse will parse
-        command line arguments
         """
 
+        # Create a example conf file if needed
+        if init_conf:
+            print("Create an example configuration file in the current folder")
+            self._write_example_conf()
+            sys.exit(0)
+
         print("Initialize Sekator")
-
-        # Define fundamental variables
-        self.version = "Sekator 0.1"
-        self.usage = "Usage: %prog -c Conf.txt"
-
-        # Use Conf file if interactive interpreter else parse arguments with optparse
-        self.conf = conf_file if conf_file else self._optparser()
-
         # Parse the configuration file and verify the values of variables
         try:
+
+            #verify if conf file was
+            assert conf_file, "A path to the configuration file is mandatory"
+            self.conf = conf_file
+
             # Define a configuration file parser object and load the configuration file
             cp = ConfigParser.RawConfigParser(allow_no_value=False)
             cp.read(self.conf)
@@ -80,7 +106,6 @@ class Sekator (object):
             self.n_thread = cpu_count() if cp.getboolean("general", "auto_thread") else cp.getint("general", "n_thread")
             self.write_report = cp.getboolean("general", "write_report")
             self.compress_output = cp.getboolean("general", "compress_output")
-            ##########self.output_single = cp.getboolean("general", "output_single ")
 
             # Quality Trimming section
             self.left_trim = cp.getboolean("quality", "left_trim")
@@ -94,7 +119,6 @@ class Sekator (object):
             # Adapter Trimming section
             self.adapter_trim = cp.getboolean("adapter", "adapter_trim")
             if self.adapter_trim:
-                self.find_reverse = cp.getboolean("adapter", "find_reverse")
                 self.min_match_len = cp.getfloat("adapter", "min_match_len")
                 self.min_match_score = cp.getfloat("adapter", "min_match_score")
                 self.ssw_match = cp.getint("adapter", "ssw_match")
@@ -160,7 +184,7 @@ class Sekator (object):
             n_read1 = self._count_fastq (sample.R1_path)
             n_read2 = self._count_fastq (sample.R2_path)
             assert n_read1 == n_read2, "Fastq R1 and Fastq R2 files do not contain the same number of reads"
-            self.progress_bar = ProgressBar(total_seq = n_read1, number_step = 5)
+            self.progress_bar = ProgressBar(total_seq = n_read1, number_step = 10)
 
             # Init generic shared memory counters
             self.total = Value('i', 0)
@@ -189,7 +213,6 @@ class Sekator (object):
             if self.adapter_trim:
                 self.adapter_trimmer = AdapterTrimmer(
                     adapter_list = sample.adapter_list,
-                    find_reverse = self.find_reverse,
                     min_size = self.min_size,
                     min_match_len = self.min_match_len,
                     min_match_score = self.min_match_score,
@@ -382,23 +405,107 @@ class Sekator (object):
 
     #~~~~~~~PRIVATE METHODS~~~~~~~#
 
-    def _optparser(self):
-        """
-        Parse CLI and return a valid configuration file path
-        """
-        # Define parser usage, options
-        optparser = optparse.OptionParser(usage = self.usage, version = self.version)
-        optparser.add_option('-c', dest="conf_file", help= "Path to the configuration file")
+    def _write_example_conf(self):
 
-        # Parse arguments
-        options, args = optparser.parse_args()
+        with open ("Example_conf_file.txt", 'wb') as fp:
+            fp.write ("""
+###################################################################################################
+#                                  SEKATOR CONFIGURATION FILE                                     #
+###################################################################################################
+# Values can by customized with users values, but the file template must remain unchanged,
+# otherwise the program will not be able to load default values.
+# - File path should be indicated as absolute path preferably and should not contain blank spaces
+# - Values identified with '**' in the descriptor are not recommended to be modified
 
-        # Verify conf file
-        if not options.conf_file:
-            optparser.print_help()
-            optparser.error("incorrect number of arguments")
+###################################################################################################
+[general]
 
-        return options.conf_file
+# Quality format associated with reads. Autorized values are : solexa, solexa-old or phred. See
+# HTSeq documentation for more details. (STRING)
+qual_scale : phred
+
+# Minimal size of read after trimming (POSITIVE INTEGER)
+min_size = 30
+
+# Use all available threads for parrallel processing (BOOLEAN)
+auto_thread = True
+
+# If auto_thread is "False" specify the maximal number of thread to use (POSITIVE INTEGER)
+n_thread :
+
+# Write a txt report (BOOLEAN)
+write_report : True
+
+# Compress the fastq output (BOOLEAN)
+compress_output : True
+
+###################################################################################################
+[quality]
+
+# Perform quality trimming from the left and/or extremities (BOOLEAN)
+left_trim : True
+right_trim : True
+
+# Size of the sliding window in which quality will be computed (POSITIVE INTEGER)
+win_size : 6
+
+# Step of sliding window during trimming (POSITIVE INTEGER)
+step : 2
+
+# Minimal quality in a given windows to be retained during trimming (0 <= POSITIVE INTEGER <= 40)
+qual_cutdown : 28
+
+###################################################################################################
+[adapter]
+
+# Perform a step of adapter trimming (BOOLEAN)
+adapter_trim : True
+
+# Minimal fraction of the length of the adapter matching on the read (0 < FLOAT <= 1) **
+min_match_len : 0.3
+
+# Minimal SSW score/base of the adapter matching on the read (POSITIVE FLOAT <= ssw_match) **
+min_match_score : 1
+
+# Scores for stripped Smith and Waterman sequence alignment if :
+# - Gain if 2 aligned bases are identical : ssw_match
+# - Penalty if 2 aligned bases are different : ssw_mismatch
+# - Penalty if one of the two base is ambiguous : ssw_ambiguous
+# - Penalty if a gap is opened : ssw_gapO
+# - Penalty if a gap is extended : ssw_gapE
+# All values have to be POSITIVE INTEGER. Penalty will be converted in negative scores by the
+# aligner. Values were optimized for adapter match (40-60 pb) on short reads (100, 200 pb)  **
+
+ssw_match : 2
+ssw_mismatch : 2
+ssw_ambiguous : 0
+ssw_gapO : 3
+ssw_gapE : 1
+
+###################################################################################################
+# SAMPLE DEFINITIONS
+
+# It is possible to include as many independant sample as required by duplicating a entire sample
+# section and incrementing the id number in the sample section name
+# Each sample section is organize as follow :
+# name = Unique identifier that will be used to prefix the read files (STRING)
+# - R1_path = Valid path to the fastq(.gz) file containing the forward reads of the pair (STRING)
+# - R1_path = Valid path to the fastq file (gziped or not) containing the reverse reads of the pair
+#   preferably absolute path without spaces) (STRING)
+# - adapter_list = list of adapter DNA sequence to be trimmed if adapter_trimming is required.
+# - Separate each adapter by a blank space (LIST OF STR)
+
+[sample1]
+name : 100k_AAV
+R1_path : ../local_dataset/100k_AAV_R1.fastq.gz
+R2_path : ../local_dataset/100k_AAV_R2.fastq.gz
+adapter_list : GATCGGAAGAGCACACGTCTGAACTCCAGTCACNNNNNNATCTCGTATGCCGTCTTCTGCTTG AATGATACGGCGACCACCGAGATCTACACTCTTTCCCTACACGACGCTCTTCCGATCT
+
+[sample2]
+name : 1M_AAV
+R1_path : ../local_dataset/1M_AAV_R1.fastq.gz
+R2_path : ../local_dataset/1M_AAV_R2.fastq.gz
+adapter_list : GATCGGAAGAGCACACGTCTGAACTCCAGTCACNNNNNNATCTCGTATGCCGTCTTCTGCTTG AATGATACGGCGACCACCGAGATCTACACTCTTTCCCTACACGACGCTCTTCCGATCT """)
 
     def _test_values(self):
         """
@@ -585,22 +692,6 @@ class ProgressBar (object):
                 self.n_step*100/self.number_step))
 
             self.n_step +=1
-
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
-class Decoy (object):
-    """
-    Decoy class to limit the number of test in the filter
-    """
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
-    #~~~~~~~FUNDAMENTAL METHODS~~~~~~~#
-
-    def __init__ (self):
-        pass
-
-    #~~~~~~~PUBLIC METHODS~~~~~~~#
-
-    def __call__ (self, obj):
-        return obj
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
 #   TOP LEVEL INSTRUCTIONS
