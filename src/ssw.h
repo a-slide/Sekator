@@ -64,14 +64,13 @@ typedef struct _align s_align;
 
 //// Public functions ////
 
-int8_t* score_matrix (const int8_t match, const int8_t mismatch, const int8_t ambiguous);
+int8_t* score_matrix (const int8_t match, const int8_t mismatch);
 
 /*! @function   Generate a 1D integer array representing a 5*5 score matrix from the provided match, mismatch and ambiguous penalties
     @param match        Bonus in case of match (POSITIVE)
     @param mismatch     Penalty in case of mismatch (POSITIVE)
-    @param ambiguous    Value in case of ambiguous base (Should remain NULL)
     @return 8 bits integer array encoding a score matrix (see bellow)
-    @note   If the penalty for match, mismatch and ambiguous are 2, 2 and 0, respectively, the score matrix will be:
+    @note   If the penalty for match and mismatch are 2, 2, respectively, the score matrix will be:
              A  C  G  T  N  (or other ambiguous code)
              2 -2 -2 -2  0   A
             -2  2 -2 -2  0   C

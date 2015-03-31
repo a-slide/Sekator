@@ -59,5 +59,4 @@ src/AdapterTrimmer.o
 src/AdapterTrimmer.so
 src/AdapterTrimmer.html
 src/build/
-test/local_dataset/
-test/test/
+test/local*

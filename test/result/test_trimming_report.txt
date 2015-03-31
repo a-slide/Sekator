@@ -1,0 +1,21 @@
+Sample name	test
+Generic section
+Total pair	17
+Pass quality trimming	15
+Pass adapter trimming	15
+Pass total	15
+
+Quality trimming section
+Total read	34
+Untrimmed	22
+Trimmed	8
+Fail	4
+Base trimmed	804
+Mean quality	35
+
+Adapter trimming section
+Total read	30
+Untrimmed	10
+Trimmed	20
+Fail	0
+Base trimmed	1186

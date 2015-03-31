@@ -27,15 +27,13 @@ try:
     import os
     from gzip import open as gopen
 
-    # Third party imports
-    import numpy
-    from HTSeq import FastqReader
-    from HTSeq import SequenceWithQualities as HTSeq_Fastq
-
     # Local Package import
     from AdapterTrimmer import AdapterTrimmer
     from QualityTrimmer import QualityTrimmer
-    from HTSeqProxy import SequenceWithQualitiesProxy as Proxy_Fastq
+    from Conf_file import write_example_conf
+    from Fastq import FastqSeq, FastqReader
+    from Sample import Sample
+    from ProgressBar import ProgressBar
 
 except ImportError as E:
     print (E)
@@ -51,7 +49,7 @@ class Sekator (object):
 
     #~~~~~~~CLASS FIELDS~~~~~~~#
 
-    VERSION = "Sekator 0.1"
+    VERSION = "Sekator 0.2"
     USAGE = "Usage: %prog -c Conf.txt [-i -h]"
 
     #~~~~~~~CLASS METHODS~~~~~~~#
@@ -85,7 +83,7 @@ class Sekator (object):
         # Create a example conf file if needed
         if init_conf:
             print("Create an example configuration file in the current folder")
-            self._write_example_conf()
+            write_example_conf()
             sys.exit(0)
 
         print("Initialize Sekator")
@@ -101,7 +99,6 @@ class Sekator (object):
             cp.read(self.conf)
 
             # General section
-            self.qual_scale = cp.get("general", "qual_scale")
             self.min_size = cp.getint("general", "min_size")
             self.n_thread = cpu_count() if cp.getboolean("general", "auto_thread") else cp.getint("general", "n_thread")
             self.write_report = cp.getboolean("general", "write_report")
@@ -123,7 +120,6 @@ class Sekator (object):
                 self.min_match_score = cp.getfloat("adapter", "min_match_score")
                 self.ssw_match = cp.getint("adapter", "ssw_match")
                 self.ssw_mismatch = cp.getint("adapter", "ssw_mismatch")
-                self.ssw_ambiguous = cp.getint("adapter", "ssw_ambiguous")
                 self.ssw_gapO = cp.getint("adapter", "ssw_gapO")
                 self.ssw_gapE = cp.getint("adapter", "ssw_gapE")
 
@@ -154,7 +150,7 @@ class Sekator (object):
 
         self.buffer_size = 20 # Buffer size for writing in fastq file
 
-    def __repr__(self):
+    def __str__(self):
         msg = "SEKATOR CLASS\n\tParameters list\n"
         # list all values in object dict in alphabetical order
         keylist = [key for key in self.__dict__.keys()]
@@ -163,17 +159,14 @@ class Sekator (object):
             msg+="\t{}\t{}\n".format(key, self.__dict__[key])
         return (msg)
 
-    def __str__(self):
+    def __repr__(self):
         return "<Instance of {} from {} >\n".format(self.__class__.__name__, self.__module__)
-
 
     #~~~~~~~PRIVATE METHODS~~~~~~~#
 
     def __call__ (self):
-        """
-        Main function of the script
-        """
-        # Start a timer
+        """ Main function of the script """
+
         start_time = time()
 
         for n, sample in enumerate (self.sample_list):
@@ -218,7 +211,6 @@ class Sekator (object):
                     min_match_score = self.min_match_score,
                     ssw_match = self.ssw_match,
                     ssw_mismatch = self.ssw_mismatch,
-                    ssw_ambiguous = self.ssw_ambiguous,
                     ssw_gapO = self.ssw_gapO,
                     ssw_gapE = self.ssw_gapE)
 
@@ -227,10 +219,6 @@ class Sekator (object):
                 self.adapt_trimmed = Value('i', 0)
                 self.adapt_fail = Value('i', 0)
                 self.adapt_base_trimmed = Value('i', 0)
-                #self.adapter_found = Array('i', range(len(sample.adapter_list)))
-                #for i in range(len(sample.adapter_list)):
-                    #with self.adapter_found.get_lock():
-                        #self.adapter_found[i] = 0
 
             # Init queues for input file reading and output file writing (limited to 10000 objects)
             self.inq = Queue(maxsize=10000)
@@ -267,21 +255,26 @@ class Sekator (object):
         in queue for the workers. Add n_thread STOP pills at the end of the inq for each worker.
         """
 
-        # Init HTSeq fastq reader generator
-        R1_gen = FastqReader(R1_path, qual_scale=self.qual_scale)
-        R2_gen = FastqReader(R2_path, qual_scale=self.qual_scale)
+        # Init FastqReader generators
+        R1_gen = FastqReader(R1_path)
+        R2_gen = FastqReader(R2_path)
+        n = 0
 
-        n = 1
-        # Parse sequences in generators until one of then is empty
-        for read1, read2 in zip (R1_gen, R2_gen):
+        # Iterate over reads in fastq files until exhaustion
+        try:
+            while True:
+                read1 = R1_gen.next()
+                read2 = R2_gen.next()
 
-            # Transform in fastq proxy else it doesn't work through Queues
-            # Add a tuple position, read1 and read2 to the end of the queue
-            self.inq.put( ( Proxy_Fastq.init_from_HTSeq(read1), Proxy_Fastq.init_from_HTSeq(read2) ) )
+                # Add a tuple read1 and read2 to the end of the queue
+                self.inq.put( ( read1, read2 ) )
+                n+=1
 
-            # update the progress bar
-            self.progress_bar(n)
-            n+=1
+                # update the progress bar
+                self.progress_bar(n)
+
+        except StopIteration as E:
+            print(E)
 
         # Add a STOP pill to the queue
         for i in range(self.n_thread):
@@ -405,114 +398,11 @@ class Sekator (object):
 
     #~~~~~~~PRIVATE METHODS~~~~~~~#
 
-    def _write_example_conf(self):
-
-        with open ("Example_conf_file.txt", 'wb') as fp:
-            fp.write ("""
-###################################################################################################
-#                                  SEKATOR CONFIGURATION FILE                                     #
-###################################################################################################
-# Values can by customized with users values, but the file template must remain unchanged,
-# otherwise the program will not be able to load default values.
-# - File path should be indicated as absolute path preferably and should not contain blank spaces
-# - Values identified with '**' in the descriptor are not recommended to be modified
-
-###################################################################################################
-[general]
-
-# Quality format associated with reads. Autorized values are : solexa, solexa-old or phred. See
-# HTSeq documentation for more details. (STRING)
-qual_scale : phred
-
-# Minimal size of read after trimming (POSITIVE INTEGER)
-min_size = 30
-
-# Use all available threads for parrallel processing (BOOLEAN)
-auto_thread = True
-
-# If auto_thread is "False" specify the maximal number of thread to use (POSITIVE INTEGER)
-n_thread :
-
-# Write a txt report (BOOLEAN)
-write_report : True
-
-# Compress the fastq output (BOOLEAN)
-compress_output : True
-
-###################################################################################################
-[quality]
-
-# Perform quality trimming from the left and/or extremities (BOOLEAN)
-left_trim : True
-right_trim : True
-
-# Size of the sliding window in which quality will be computed (POSITIVE INTEGER)
-win_size : 6
-
-# Step of sliding window during trimming (POSITIVE INTEGER)
-step : 2
-
-# Minimal quality in a given windows to be retained during trimming (0 <= POSITIVE INTEGER <= 40)
-qual_cutdown : 28
-
-###################################################################################################
-[adapter]
-
-# Perform a step of adapter trimming (BOOLEAN)
-adapter_trim : True
-
-# Minimal fraction of the length of the adapter matching on the read (0 < FLOAT <= 1) **
-min_match_len : 0.3
-
-# Minimal SSW score/base of the adapter matching on the read (POSITIVE FLOAT <= ssw_match) **
-min_match_score : 1
-
-# Scores for stripped Smith and Waterman sequence alignment if :
-# - Gain if 2 aligned bases are identical : ssw_match
-# - Penalty if 2 aligned bases are different : ssw_mismatch
-# - Penalty if one of the two base is ambiguous : ssw_ambiguous
-# - Penalty if a gap is opened : ssw_gapO
-# - Penalty if a gap is extended : ssw_gapE
-# All values have to be POSITIVE INTEGER. Penalty will be converted in negative scores by the
-# aligner. Values were optimized for adapter match (40-60 pb) on short reads (100, 200 pb)  **
-
-ssw_match : 2
-ssw_mismatch : 2
-ssw_ambiguous : 0
-ssw_gapO : 3
-ssw_gapE : 1
-
-###################################################################################################
-# SAMPLE DEFINITIONS
-
-# It is possible to include as many independant sample as required by duplicating a entire sample
-# section and incrementing the id number in the sample section name
-# Each sample section is organize as follow :
-# name = Unique identifier that will be used to prefix the read files (STRING)
-# - R1_path = Valid path to the fastq(.gz) file containing the forward reads of the pair (STRING)
-# - R1_path = Valid path to the fastq file (gziped or not) containing the reverse reads of the pair
-#   preferably absolute path without spaces) (STRING)
-# - adapter_list = list of adapter DNA sequence to be trimmed if adapter_trimming is required.
-# - Separate each adapter by a blank space (LIST OF STR)
-
-[sample1]
-name : 100k_AAV
-R1_path : ../local_dataset/100k_AAV_R1.fastq.gz
-R2_path : ../local_dataset/100k_AAV_R2.fastq.gz
-adapter_list : GATCGGAAGAGCACACGTCTGAACTCCAGTCACNNNNNNATCTCGTATGCCGTCTTCTGCTTG AATGATACGGCGACCACCGAGATCTACACTCTTTCCCTACACGACGCTCTTCCGATCT
-
-[sample2]
-name : 1M_AAV
-R1_path : ../local_dataset/1M_AAV_R1.fastq.gz
-R2_path : ../local_dataset/1M_AAV_R2.fastq.gz
-adapter_list : GATCGGAAGAGCACACGTCTGAACTCCAGTCACNNNNNNATCTCGTATGCCGTCTTCTGCTTG AATGATACGGCGACCACCGAGATCTACACTCTTTCCCTACACGACGCTCTTCCGATCT """)
-
     def _test_values(self):
         """
         Test the validity of options in the configuration file
         """
         # Verify values from the quality section
-        assert self.qual_scale in ["solexa", "solexa-old", 'phred'], "Authorized values for quality_scale : solexa, solexa-old, phred"
         assert self.min_size >= 0, "Authorized values for min_size : >= 0"
         assert self.n_thread > 0, "Authorized values for n_thread : > 0"
 
@@ -539,7 +429,7 @@ adapter_list : GATCGGAAGAGCACACGTCTGAACTCCAGTCACNNNNNNATCTCGTATGCCGTCTTCTGCTTG A
         Basic fastq line counter
         """
         try:
-            fp = gopen(fastq, "rb") if self._is_gz(fastq) else open(fastq, "rb")
+            fp = gopen(fastq, "rb") if fastq[-2:].lower() == "gz" else open(fastq, "rb")
             nline = 0
 
             for line in fp:
@@ -550,19 +440,6 @@ adapter_list : GATCGGAAGAGCACACGTCTGAACTCCAGTCACNNNNNNATCTCGTATGCCGTCTTCTGCTTG A
 
         except IOError as e:
             print "I/O error({}): {}".format(e.errno, e.strerror)
-
-    def _is_gz(self, fp):
-        """
-        Indicate if a file is gziped
-        """
-        return fp[-2:].lower() == "gz"
-
-    def _fastq_str (self, name, seq, qualstr):
-        """
-        Generate a fastq str of read from read, index and molecular Seq Record
-        """
-        return "@{}\n{}\n+\n{}\n".format(name, seq, qualstr)
-
 
     def _write_report (self, sample_name, n_adapter):
 
@@ -592,106 +469,6 @@ adapter_list : GATCGGAAGAGCACACGTCTGAACTCCAGTCACNNNNNNATCTCGTATGCCGTCTTCTGCTTG A
                 report.write("Trimmed\t{}\n".format(self.adapt_trimmed.value))
                 report.write("Fail\t{}\n".format(self.adapt_fail.value))
                 report.write("Base trimmed\t{}\n".format(self.adapt_base_trimmed.value))
-                #for i in range(n_adapter):
-                    #report.write("Adapter {} found\t{}\n".format(i, self.adapter_found[i]))
-
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
-class Sample(object):
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
-
-    #~~~~~~~CLASS FIELDS~~~~~~~#
-
-    SAMPLE_NAMES = []
-
-    #~~~~~~~CLASS METHODS~~~~~~~#
-
-    @ classmethod
-    def ADD_TO_SAMPLE_NAMES(self, name):
-        self.SAMPLE_NAMES.append(name)
-
-    #~~~~~~~FUNDAMENTAL METHODS~~~~~~~#
-
-    def __init__ (self, name, R1_path, R2_path, adapter_list, compress_output):
-
-        # Create self variables
-        self.name = name
-        self.R1_path = R1_path
-        self.R2_path = R2_path
-        self.adapter_list = adapter_list
-
-        self._test_values()
-
-        self.R1_outname = "{}_R1_filtered.fastq{}".format(self.name, ".gz" if compress_output else "")
-        self.R2_outname = "{}_R2_filtered.fastq{}".format(self.name, ".gz" if compress_output else "")
-        #self.single_outname = "{}_single_filtered.fastq{}".format(self.name, ".gz" if compress_output else "")
-
-        self.ADD_TO_SAMPLE_NAMES(self.name)
-
-    # Fundamental class methods str and repr
-    def __repr__(self):
-        msg = "SAMPLE CLASS\n\tParameters list\n"
-        # list all values in object dict in alphabetical order
-        keylist = [key for key in self.__dict__.keys()]
-        keylist.sort()
-        for key in keylist:
-            msg+="\t{}\t{}\n".format(key, self.__dict__[key])
-        return (msg)
-
-    def __str__(self):
-        return "<Instance of {} from {} >\n".format(self.__class__.__name__, self.__module__)
-
-    #~~~~~~~PRIVATE METHODS~~~~~~~#
-
-    def _test_values(self):
-        assert self.name not in self.SAMPLE_NAMES, "Sample name <{}> is duplicated".format(self.name)
-        assert self._is_readable_file (self.R1_path), "R1_path in Sample <{}> is not valid".format(self.name)
-        assert self._is_readable_file (self.R2_path), "R2_path in Sample <{}> is not valid".format(self.name)
-        for adapter in self.adapter_list:
-            assert self._is_dna(adapter), "<{}> in Sample <{}> is not a valid DNA sequence".format(adapter, self.name)
-
-    def _is_readable_file (self, fp):
-        return os.access(fp, os.R_OK)
-
-    def _is_dna (self, sequence):
-        for base in sequence:
-            if base not in ["A","T","C","G","N","a","t","c","g","n"]:
-                return False
-        return True
-
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
-class ProgressBar (object):
-    """
-    Simple progress bar
-    """
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
-
-    #~~~~~~~FUNDAMENTAL METHODS~~~~~~~#
-
-    def __init__ (self, total_seq, number_step):
-        """
-        To be init with the total number of sequence and the desired number of steps
-        """
-        self.total_seq = total_seq # To match 0 base index
-        self.number_step = number_step
-        self.numeric_step = int(self.total_seq/self.number_step) # Non exact steps
-        self.n_step = 1
-
-    #~~~~~~~PUBLIC METHODS~~~~~~~#
-
-    def __call__ (self, n):
-        """
-        Call each iteration of the loop to verify is the progress bar needs to be updated
-        """
-        if n%self.numeric_step == 0:
-            if self.n_step == self.number_step :
-                print("\t[{}] 100% DONE".format("X"*self.n_step))
-            else:
-                print("\t[{}{}] {}%".format(
-                "X"*self.n_step,
-                "-"*(self.number_step - self.n_step),
-                self.n_step*100/self.number_step))
-
-            self.n_step +=1
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
 #   TOP LEVEL INSTRUCTIONS
@@ -699,5 +476,5 @@ class ProgressBar (object):
 
 if __name__ == '__main__':
 
-    sekator = Sekator()
+    sekator = Sekator.class_init()
     sekator()

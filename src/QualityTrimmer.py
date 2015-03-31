@@ -1,3 +1,16 @@
+# -*- coding: utf-8 -*-
+
+"""
+@package    Sekator
+@brief      Perform Quality trimming of fastq sequences
+@copyright  [GNU General Public License v2](http://www.gnu.org/licenses/gpl-2.0.html)
+@author     Adrien Leger - 2014
+* <adrien.leger@gmail.com>
+* <adrien.leger@inserm.fr>
+* <adrien.leger@univ-nantes.fr>
+* [Github](https://github.com/a-slide)
+* [Atlantic Gene Therapies - INSERM 1089] (http://www.atlantic-gene-therapies.fr/)
+"""
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
 class QualityTrimmer(object):
@@ -40,7 +53,7 @@ class QualityTrimmer(object):
     def mean_qual(self):
         return self.qual_mean_sum / self.total
 
-    def __repr__(self):
+    def __str__(self):
         msg = "QUALITY TRIMMER CLASS\n"
         msg += "\tQuality cutdown : {}\n".format(self.qual_cutdown)
         msg += "\tSliding windows size : {}\n".format(self.win_size)
@@ -56,7 +69,7 @@ class QualityTrimmer(object):
         msg += "\tCumulative sum of quality : {}\n".format(self.qual_mean_sum)
         return (msg)
 
-    def __str__(self):
+    def __repr__(self):
         return "<Instance of {} from {} >\n".format(self.__class__.__name__, self.__module__)
 
     #~~~~~~~PUBLIC METHODS~~~~~~~#
@@ -64,7 +77,7 @@ class QualityTrimmer(object):
     def __call__(self, seq):
         """
         Compute mean quality score and compare to the minimal quality required
-        @param seq HTSeq.SequenceWithQualities object
+        @param seq a Fastq.FastqSeq object
         """
 
         # Update counters and init border index
