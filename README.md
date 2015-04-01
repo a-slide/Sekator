@@ -28,8 +28,6 @@ Specific features:
 5. The paired reads that passed thought the trimming steps are subsequently writen in new fastq.gz files (R1 and R2) in Illumina 1.8 Phred+33 quality encoding.
 6. A progress bar indicates the advancement of sequence processing and a report is generated for each sample. 
 
-![Quade](https://raw.githubusercontent.com/a-slide/Quade/master/doc/img/quade-io.png)
-
 ## Dependencies
 
 The program was developed under Linux Mint 17 and was not tested with other OS.
