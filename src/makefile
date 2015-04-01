@@ -41,8 +41,8 @@ AdapterTrimmer.c: AdapterTrimmer.pyx
 
 clean:
 	#Clean intermediate files
-	rm -f AdapterTrimmer.o AdapterTrimmer.c AdapterTrimmer.html
+	rm -rf AdapterTrimmer.o AdapterTrimmer.c AdapterTrimmer.html ./build/ *.pyc
 
 mrproper:
 	#Clean everything
-	rm -f AdapterTrimmer.o AdapterTrimmer.c AdapterTrimmer.html AdapterTrimmer.so
+	rm -rf AdapterTrimmer.o AdapterTrimmer.c AdapterTrimmer.html AdapterTrimmer.so ./build/ *.pyc

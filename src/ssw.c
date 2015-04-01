@@ -91,7 +91,7 @@ struct _align{
 typedef struct _align s_align;
 
 /* This table is used to transform nucleotide letters into numbers.
- * A=a=0, C=c=1, G=g=2, T==t3, all other char = 4*/
+ * A=a=0, C=c=1, G=g=2, T=t=3, all other char = 4*/
 static const int8_t NT_TABLE[128] = {
     4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4,
     4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4,
@@ -118,7 +118,7 @@ int main(void)
     print_int8_t (query,5);
     ref = DNA_seq_to_int("AATCGTCAGATCNNAGTCTGC", 20);
     print_int8_t (ref,20);
-    score = score_matrix (2, 2, 0);
+    score = score_matrix (2, 2);
     print_int8_t (score,25);
 
     res = ssw_align (query, 5, ref, 20, score, 3, 1);
@@ -137,18 +137,18 @@ int main(void)
 
 int8_t* score_matrix (
     const int8_t match, // Bonus for a match (POSITIVE)
-    const int8_t mismatch, // Malus for a mismatch (POSITIVE)
-    const int8_t ambiguous) // Bonus of malus for an ambiguous position (POSITIVE)
+    const int8_t mismatch) // Malus for a mismatch (POSITIVE)
 {
     int32_t i, j, k;
     int8_t* mat;
     mat = malloc_int8_t(25);
 
+    // a score of 0 is automatically applied for ambiguous bases
     for (i = k = 0; i < 4; ++i) {
         for (j = 0; j < 4; ++j) mat[k++] = i == j ? match : - mismatch;
-        mat[k++] = ambiguous;
+        mat[k++] = 0;
     }
-    for (i = 0; i < 5; ++i) mat[k++] = ambiguous;
+    for (i = 0; i < 5; ++i) mat[k++] = 0;
 
     return mat;
 }

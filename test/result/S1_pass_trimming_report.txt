@@ -1,0 +1,21 @@
+Sample name	S1_pass
+Generic section
+Total pair	2386
+Pass quality trimming	2334
+Pass adapter trimming	2334
+Pass total	2334
+
+Quality trimming section
+Total read	4772
+Untrimmed	4442
+Trimmed	278
+Fail	52
+Base trimmed	11042
+Mean quality	36
+
+Adapter trimming section
+Total read	4668
+Untrimmed	4668
+Trimmed	0
+Fail	0
+Base trimmed	0

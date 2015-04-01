@@ -1,3 +1,16 @@
+# -*- coding: utf-8 -*-
+
+#    @package    Sekator
+#    @brief      Perform Adapter trimming of fastq sequences
+#    @copyright  [GNU General Public License v2](http://www.gnu.org/licenses/gpl-2.0.html)
+#    @author     Adrien Leger - 2014
+#    * <adrien.leger@gmail.com>
+#    * <adrien.leger@inserm.fr>
+#    * <adrien.leger@univ-nantes.fr>
+#    * [Github](https://github.com/a-slide)
+#    * [Atlantic Gene Therapies - INSERM 1089] (http://www.atlantic-gene-therapies.fr/)
+
+
 #~~~~~~~CIMPORTS~~~~~~~#
 
 # C standard library import
@@ -39,7 +52,7 @@ cdef class AdapterTrimmer:
     cdef:
         uint32_t min_size, n_query, total, untrimmed, trimmed, fail
         uint64_t base_trimmed
-        int8_t ssw_match, ssw_mismatch, ssw_ambiguous, ssw_gapO, ssw_gapE
+        int8_t ssw_match, ssw_mismatch, ssw_gapO, ssw_gapE
         int8_t* score_mat
         s_query* ql
 
@@ -48,7 +61,7 @@ cdef class AdapterTrimmer:
 
     def __init__(self, list adapter_list, int32_t min_size=30,\
         float min_match_len=0.3, float min_match_score=1, int8_t ssw_match=2,\
-        int8_t ssw_mismatch=2, int8_t ssw_ambiguous=0, int8_t ssw_gapO=3, int8_t ssw_gapE=1):
+        int8_t ssw_mismatch=2, int8_t ssw_gapO=3, int8_t ssw_gapE=1):
 
 #        Initialize AdapterTrimmer from a list of adapter sequence and compute the score matrix
 #        based on the provided ssw scores.
@@ -58,7 +71,6 @@ cdef class AdapterTrimmer:
 #        @param min_match_score Minimal score per base for the alignment of adapter and read
 #        @param ssw_match       Gain in case of match (POSITIVE)
 #        @param ssw_mismatch    Penalty in case of mismatch (POSITIVE)
-#        @param ssw_ambiguous   Value in case of ambiguous base (Should remain NULL)
 #        @param ssw_gapO        Penalty in case of gap opening (POSITIVE)
 #        @param ssw_gapE        Penalty in case of gap extension (POSITIVE)
 #        @note Default values determined for 100pb reads with randomly generated 60 pb adaptors
@@ -67,7 +79,6 @@ cdef class AdapterTrimmer:
         self.min_size = min_size
         self.ssw_match = ssw_match
         self.ssw_mismatch = ssw_mismatch
-        self.ssw_ambiguous = ssw_ambiguous
         self.ssw_gapO = ssw_gapO
         self.ssw_gapE = ssw_gapE
 
@@ -79,7 +90,7 @@ cdef class AdapterTrimmer:
         self.base_trimmed = 0
 
         # Init a score matrix
-        self.score_mat = score_matrix (ssw_match, ssw_mismatch, ssw_ambiguous)
+        self.score_mat = score_matrix (ssw_match, ssw_mismatch)
 
         # Init a list of adapters
         self.n_query = len(adapter_list)
@@ -87,7 +98,7 @@ cdef class AdapterTrimmer:
         for n, seq in enumerate(adapter_list):
             self.ql[n] = self.build_query (n, seq, min_match_len, min_match_score)
 
-    def __repr__(self):
+    def __str__(self):
         msg = "ADAPTER TRIMMER CLASS\n"
         msg += "Minimal size:{} Total:{} Untrimmed:{} Trimmed:{} Fail:{} Base Trimmed:{}\n".format(
             self.min_size, self.total, self.untrimmed, self.trimmed, self.fail, self.base_trimmed)
@@ -99,7 +110,7 @@ cdef class AdapterTrimmer:
             msg += "\tInteger sequence : {}\n".format("".join([str(self.ql[i].seq_int[j]) for j in range(self.ql[i].size)]))
         msg += "SSW parameters\n"
         msg += "Match:{} Mismatch:{} Ambiguous:{} Gap Open:{} Gap extend:{}\n".format(
-            self.ssw_match, self.ssw_mismatch, self.ssw_ambiguous, self.ssw_gapO, self.ssw_gapE)
+            self.ssw_match, self.ssw_mismatch, 0, self.ssw_gapO, self.ssw_gapE)
         msg += "Score matrix\n"
         buf = ""
         for i in range(0, 25, 5):
@@ -109,7 +120,7 @@ cdef class AdapterTrimmer:
             buf=""
         return msg
 
-    def __str__(self):
+    def __repr__(self):
         return ("<Instance of AdapterTrimmer Class>\n")
 
     def __dealloc__(self):
@@ -128,7 +139,7 @@ cdef class AdapterTrimmer:
 
 #        Find imperfect adapter matches with ssw algorithm and extract the larger interval of
 #        reference sequence that do not overlap interval match
-#        @param seq HTSeq.SequenceWithQualities object
+#        @param seq a Fastq.FastqSeq object
 
         cdef:
             int32_t seq_size, i, start_max=0, end_max=0, inter_max=0, start=0, inter=0
