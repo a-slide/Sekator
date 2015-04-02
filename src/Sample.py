@@ -12,9 +12,6 @@
 * [Atlantic Gene Therapies - INSERM 1089] (http://www.atlantic-gene-therapies.fr/)
 """
 
-# Standard library imports
-import os
-
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
 class Sample(object):
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
@@ -63,13 +60,8 @@ class Sample(object):
 
     def _test_values(self):
         assert self.name not in self.SAMPLE_NAMES, "Sample name <{}> is duplicated".format(self.name)
-        assert self._is_readable_file (self.R1_path), "R1_path in Sample <{}> is not valid".format(self.name)
-        assert self._is_readable_file (self.R2_path), "R2_path in Sample <{}> is not valid".format(self.name)
         for adapter in self.adapter_list:
             assert self._is_dna(adapter), "<{}> in Sample <{}> is not a valid DNA sequence".format(adapter, self.name)
-
-    def _is_readable_file (self, fp):
-        return os.access(fp, os.R_OK)
 
     def _is_dna (self, sequence):
         for base in sequence:

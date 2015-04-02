@@ -1,0 +1,23 @@
+Program Sekator 0.2	Date 2015-04-02 17:08:42.104506
+
+Sample name	test
+Generic section
+Total pair	20
+Pass quality trimming	18
+Pass adapter trimming	18
+Pass total	18
+
+Quality trimming section
+Total read	40
+Untrimmed	27
+Trimmed	9
+Fail	4
+Base trimmed	806
+Mean quality	35
+
+Adapter trimming section
+Total read	36
+Untrimmed	16
+Trimmed	20
+Fail	0
+Base trimmed	1186

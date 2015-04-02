@@ -17,21 +17,20 @@
 
 try:
     # Standard library imports
-    from multiprocessing import Value, Array, Process, Queue, cpu_count
+    from multiprocessing import Value, Process, Queue, cpu_count
     from time import time
-    import gzip
-    from os import path
+    from datetime import datetime
+    from gzip import open as gopen
+    import os
     import ConfigParser
     import optparse
     import sys
-    import os
-    from gzip import open as gopen
 
     # Local Package import
     from AdapterTrimmer import AdapterTrimmer
     from QualityTrimmer import QualityTrimmer
     from Conf_file import write_example_conf
-    from Fastq import FastqSeq, FastqReader
+    from pyFastq.FastqReader import FastqReader
     from Sample import Sample
     from ProgressBar import ProgressBar
 
@@ -76,8 +75,8 @@ class Sekator (object):
 
     def __init__(self, conf_file=None, init_conf=None):
         """
-        Initialization function, parse options in command line and configuration file and verify
-        their values. All self.variables are initialized explicitly in init
+        Initialization function, parse options from configuration file and verify their values.
+        All self.variables are initialized explicitly in init.
         """
 
         # Create a example conf file if needed
@@ -90,8 +89,9 @@ class Sekator (object):
         # Parse the configuration file and verify the values of variables
         try:
 
-            #verify if conf file was
+            # Verify if conf file was given and is valid
             assert conf_file, "A path to the configuration file is mandatory"
+            self._is_readable_file(conf_file)
             self.conf = conf_file
 
             # Define a configuration file parser object and load the configuration file
@@ -128,6 +128,10 @@ class Sekator (object):
             # And store them in a list
             self.sample_list = []
             for sample in [i for i in cp.sections() if i.startswith("sample")]:
+                # Test the validity of files
+                self._is_readable_file(cp.get(sample, "R1_path"))
+                self._is_readable_file(cp.get(sample, "R1_path"))
+                # Create Sample objects
                 self.sample_list.append (Sample (
                     name = cp.get(sample, "name"),
                     R1_path = cp.get(sample, "R1_path"),
@@ -144,6 +148,9 @@ class Sekator (object):
             sys.exit(1)
         except (ValueError, AssertionError) as E:
             print ("One of the value in the configuration file is not correct\n" + E.message)
+            sys.exit(1)
+        except (IOError) as E:
+            print ("One of the file is incorrect or unreadable\n" + E.message)
             sys.exit(1)
 
         print ("All configuration file parameters are valid")
@@ -376,8 +383,8 @@ class Sekator (object):
                     with self.total_pass.get_lock():
                         self.total_pass.value+=1
 
-                    buffer_R1 += read1.get_fastq_str()
-                    buffer_R2 += read2.get_fastq_str()
+                    buffer_R1 += read1.fastqstr
+                    buffer_R2 += read2.fastqstr
 
                     if self.total_pass.value%self.buffer_size == 0:
                         out_R1.write(buffer_R1)
@@ -424,6 +431,11 @@ class Sekator (object):
             assert 0 < self.min_match_len <= 1, "Authorized values for min_match_len : > 0 to 1"
             assert min_score <= self.min_match_score <= max_score, "Authorized values for min_match_score : - higher penalty to ssw_match"
 
+    def _is_readable_file (self, fp):
+        """ Verify the readability of a file or list of file """
+        if not os.access(fp, os.R_OK):
+            raise IOError ("{} is not a valid file".format(fp))
+
     def _count_fastq (self, fastq):
         """
         Basic fastq line counter
@@ -443,8 +455,9 @@ class Sekator (object):
 
     def _write_report (self, sample_name, n_adapter):
 
-        with open ("{}_trimming_report.txt".format(sample_name), "wb") as report:
-            report.write("Sample name\t{}\n".format(sample_name))
+        with open ("{}_trimming_report.csv".format(sample_name), "wb") as report:
+            report.write ("Program {}\tDate {}\n".format(self.VERSION,str(datetime.today())))
+            report.write("\nSample name\t{}\n".format(sample_name))
             report.write("Generic section\n")
             report.write("Total pair\t{}\n".format(self.total.value))
             report.write("Pass quality trimming\t{}\n".format(self.pass_qual.value))
