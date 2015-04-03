@@ -21,8 +21,8 @@ def write_example_conf():
 ###################################################################################################
 # Values can by customized with users values, but the file template must remain unchanged,
 # otherwise the program will not be able to load default values.
-# - File path should be indicated as absolute path preferably and should not contain blank spaces
-# - Values identified with '**' in the descriptor are not recommended to be modified
+# File path should be indicated as absolute path preferably and should not contain blank spaces
+# Values identified with '**' in the descriptor are not recommended to be modified
 
 ###################################################################################################
 [general]
@@ -93,7 +93,7 @@ ssw_gapE : 1
 # Each sample section is organize as follow :
 # name = Unique identifier that will be used to prefix the read files (STRING)
 # - R1_path = Valid path to the fastq(.gz) file containing the forward reads of the pair (STRING)
-# - R1_path = Valid path to the fastq file (gziped or not) containing the reverse reads of the pair
+# - R2_path = Valid path to the fastq file (gziped or not) containing the reverse reads of the pair
 #   preferably absolute path without spaces) (STRING)
 # - adapter_list = list of adapter DNA sequence to be trimmed if adapter_trimming is required.
 # - Separate each adapter by a blank space (LIST OF STR)
