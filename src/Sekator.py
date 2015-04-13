@@ -48,7 +48,7 @@ class Sekator (object):
 
     #~~~~~~~CLASS FIELDS~~~~~~~#
 
-    VERSION = "Sekator 0.2"
+    VERSION = "Sekator 0.2.1"
     USAGE = "Usage: %prog -c Conf.txt [-i -h]"
 
     #~~~~~~~CLASS METHODS~~~~~~~#
