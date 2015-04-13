@@ -22,7 +22,7 @@ Specific features:
 ## Principle
 
 1. A configuration file containing all program parameters (including sample/adpater association) is parsed and thoroughly verified for validity.
-2. Paired fastq paired files are read read by read and sample by sample with a custom Fastq parser supporting **Illumina 1.8 Phred+33 quality encoding only**.
+2. Paired fastq paired files are read read by read and sample by sample with a custom Fastq parser (pyFastq Submodule) supporting **Illumina 1.8 Phred +33 quality encoding only**.
 3. If required, a quality trimming of reads can be performed with a quality sliding windows, starting from both ends of reads. Reads of insufficient quality or too short after trimming are discarded, together with their paired mate.
 4. If required, an adapter trimming of reads can be performed with the adapters provided for each sample. **Imperfect matches can be found anywhere in the reads for as many adapters as required** thanks to an optimized and fast Smith and Waterman Algorithm. If adapters matches are found in a read, the longest part of the read without adapter match is extracted. Reads too short after trimming are discarded, together with their paired mate.
 5. The paired reads that passed thought the trimming steps are subsequently writen in new fastq.gz files (R1 and R2) in Illumina 1.8 Phred+33 quality encoding.
@@ -40,7 +40,7 @@ If you have pip already installed, enter the following line to install packages:
 
 ## Get and install Sekator
 
-* Clone the repository or download the archive ```git clone https://github.com/a-slide/Sekator.git```
+* Clone the repository in **recursive mode** to download the main repo and its submodules ```git clone --recursive https://github.com/a-slide/Sekator.git```
 
 * Enter the src folder of the program folder
 
@@ -75,7 +75,7 @@ Sekator.py -c Sekator_conf_file.txt
 
 ## Authors and Contact
 
-Adrien Leger - 2014
+Adrien Leger - 2015
 
 * <adrien.leger@gmail.com> - <adrien.leger@inserm.fr> - <adrien.leger@univ-nantes.fr>
 * [Github](https://github.com/a-slide)

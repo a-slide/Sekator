@@ -1,0 +1,3 @@
+[submodule "src/pyFastq"]
+	path = src/pyFastq
+	url = https://github.com/a-slide/pyFastq.git
