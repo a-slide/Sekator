@@ -75,8 +75,5 @@ Sekator.py -c Sekator_conf_file.txt
 
 ## Authors and Contact
 
-Adrien Leger - 2015
-
-* <adrien.leger@gmail.com> - <adrien.leger@inserm.fr> - <adrien.leger@univ-nantes.fr>
-* [Github](https://github.com/a-slide)
-* [Atlantic Gene Therapies - INSERM 1089](http://www.atlantic-gene-therapies.fr/)
+* Adrien Leger <aleg@ebi.ac.uk> @a-slide
+* Emilie Lecomte <emilie.lecomte@univ-nantes.fr> @emlec
