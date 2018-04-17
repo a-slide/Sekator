@@ -1,4 +1,4 @@
-# Sekator 0.3.1
+# Sekator 0.2.1
 
 **Multithreaded quality and adapter trimmer for PAIRED fastq files (Python2.7/Cython/C)**
 
